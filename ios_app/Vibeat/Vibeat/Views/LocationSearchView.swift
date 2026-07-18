@@ -41,9 +41,9 @@ struct LocationSearchView: View {
                 .frame(height: 1)
             
             // Suggestion list (Typewriter Styled)
-            if !viewModel.searchCompleter.results.isEmpty {
+            if !viewModel.searchCompleter.completions.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(viewModel.searchCompleter.results.prefix(4), id: \.self) { result in
+                    ForEach(viewModel.searchCompleter.completions.prefix(4), id: \.self) { result in
                         Button(action: {
                             Task {
                                 isSearchFocused = false

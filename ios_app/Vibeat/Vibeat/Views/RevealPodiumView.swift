@@ -18,7 +18,7 @@ struct RevealPodiumView: View {
                     HStack {
                         Button(action: {
                             withAnimation(.spring()) {
-                                viewModel.appState = .lobby
+                                viewModel.path.removeLast()
                             }
                         }) {
                             Image(systemName: "arrow.left")

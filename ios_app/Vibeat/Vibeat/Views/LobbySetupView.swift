@@ -1,351 +1,734 @@
 import SwiftUI
+import MapKit
 
+// MARK: - Simple Location Search Sheet (no map)
+struct LocationPickerSheet: View {
+    @ObservedObject var viewModel: LobbyViewModel
+    @Environment(\.dismiss) var dismiss
+
+    @StateObject private var searchService = LocationSearchService()
+    @FocusState private var isSearchFocused: Bool
+
+    // Confirmed selection
+    @State private var selectedName: String = ""
+    @State private var selectedSubtitle: String = ""
+    @State private var selectedLat: Double? = nil
+    @State private var selectedLng: Double? = nil
+
+    var body: some View {
+        VStack(spacing: 0) {
+
+            // ── Header ──────────────────────────────────────────────
+            HStack(spacing: 12) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.carbonInk)
+                        .frame(width: 40, height: 40)
+                        .background(Color.carbonInk.opacity(0.06))
+                        .clipShape(Circle())
+                }
+
+                Text("Choose Location")
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(.carbonInk)
+
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 16)
+
+            // ── Search Bar ─────────────────────────────────────────
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.carbonInk.opacity(0.4))
+                    .font(.system(size: 16, weight: .semibold))
+
+                TextField("Search neighbourhood, city...", text: $searchService.searchQuery)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundColor(.carbonInk)
+                    .tint(.terracottaOrange)
+                    .focused($isSearchFocused)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+
+                if !searchService.searchQuery.isEmpty {
+                    Button(action: {
+                        searchService.searchQuery = ""
+                        selectedName = ""
+                        selectedLat = nil
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.carbonInk.opacity(0.3))
+                            .font(.system(size: 18))
+                    }
+                }
+            }
+            .padding(.vertical, 13)
+            .padding(.horizontal, 16)
+            .background(Color.carbonInk.opacity(0.05))
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSearchFocused ? Color.terracottaOrange.opacity(0.5) : Color.clear, lineWidth: 1.5)
+            )
+            .padding(.horizontal, 20)
+            .animation(.easeInOut(duration: 0.2), value: isSearchFocused)
+
+            // ── Results List ───────────────────────────────────────
+            if !searchService.completions.isEmpty {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(searchService.completions, id: \.self) { result in
+                            Button(action: {
+                                Task { await selectResult(result) }
+                            }) {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.terracottaOrange.opacity(0.10))
+                                            .frame(width: 38, height: 38)
+                                        Image(systemName: "mappin.circle.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(.terracottaOrange)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(result.title)
+                                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                            .foregroundColor(.carbonInk)
+                                            .multilineTextAlignment(.leading)
+
+                                        if !result.subtitle.isEmpty {
+                                            Text(result.subtitle)
+                                                .font(.system(size: 12, design: .rounded))
+                                                .foregroundColor(.carbonInk.opacity(0.45))
+                                                .multilineTextAlignment(.leading)
+                                        }
+                                    }
+                                    Spacer()
+
+                                    Image(systemName: "arrow.up.left")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.carbonInk.opacity(0.25))
+                                }
+                                .padding(.vertical, 13)
+                                .padding(.horizontal, 20)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            if result != searchService.completions.last {
+                                Divider()
+                                    .padding(.leading, 72)
+                                    .opacity(0.5)
+                            }
+                        }
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            } else if searchService.searchQuery.isEmpty {
+                // Empty state hint
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "location.magnifyingglass")
+                        .font(.system(size: 44))
+                        .foregroundColor(.carbonInk.opacity(0.15))
+                    Text("Type to search for a location")
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundColor(.carbonInk.opacity(0.3))
+                    Spacer()
+                }
+            } else {
+                // Searching / no results
+                VStack(spacing: 16) {
+                    Spacer()
+                    ProgressView()
+                        .tint(.terracottaOrange)
+                    Text("Looking up \"\(searchService.searchQuery)\"…")
+                        .font(.system(size: 13, design: .rounded))
+                        .foregroundColor(.carbonInk.opacity(0.35))
+                    Spacer()
+                }
+            }
+
+            // ── Confirm Button (shows after a selection) ──────────
+            if selectedLat != nil {
+                VStack(spacing: 8) {
+                    Divider().opacity(0.4)
+
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.terracottaOrange.opacity(0.10))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.terracottaOrange)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(selectedName)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(.carbonInk)
+                                .lineLimit(1)
+                            if !selectedSubtitle.isEmpty {
+                                Text(selectedSubtitle)
+                                    .font(.system(size: 12, design: .rounded))
+                                    .foregroundColor(.carbonInk.opacity(0.45))
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+
+                    Button(action: confirmSelection) {
+                        Text("CONFIRM LOCATION")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .foregroundColor(.inkPaper)
+                            .tracking(1.5)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.terracottaOrange)
+                            )
+                            .shadow(color: Color.terracottaOrange.opacity(0.35), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 28)
+                }
+                .background(Color.inkPaper)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .background(Color.inkPaper.ignoresSafeArea())
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedLat != nil)
+        .onAppear {
+            isSearchFocused = true
+            // Pre-fill existing selection if any
+            if let lat = viewModel.predefinedLat, let lng = viewModel.predefinedLng {
+                selectedName = viewModel.predefinedName
+                selectedLat = lat
+                selectedLng = lng
+            }
+        }
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────
+
+    private func selectResult(_ completion: MKLocalSearchCompletion) async {
+        let request = MKLocalSearch.Request(completion: completion)
+        let search = MKLocalSearch(request: request)
+        do {
+            let response = try await search.start()
+            if let item = response.mapItems.first {
+                let coord = item.placemark.coordinate
+                await MainActor.run {
+                    selectedName = completion.title
+                    selectedSubtitle = completion.subtitle
+                    selectedLat = coord.latitude
+                    selectedLng = coord.longitude
+                    searchService.searchQuery = completion.title
+                    isSearchFocused = false
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
+        } catch {
+            print("Location search failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func confirmSelection() {
+        guard let lat = selectedLat, let lng = selectedLng else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        viewModel.predefinedName = selectedName
+        viewModel.predefinedLat = lat
+        viewModel.predefinedLng = lng
+        dismiss()
+    }
+}
+
+// MARK: - Main Lobby Setup View
 struct LobbySetupView: View {
     @ObservedObject var viewModel: LobbyViewModel
     @State private var currentStep = 1
-    @State private var locationChoice = "halfway" // "halfway" or "neighborhood"
+    @State private var locationChoice = "halfway"
+    @State private var dinnerDate = Date()
+    @State private var isSealStamped = false
+    @State private var showingMapPicker = false
     
+    // Robust local state to prevent SwiftUI cursor jump and deletion resets
+    @State private var budgetInput = "500"
+    
+    // Occasions mapped to stamp assets
     let occasions = [
-        ("Birthday", "🎂"),
-        ("Casual", "🍕"),
-        ("Meeting", "💼"),
-        ("Date", "🌹"),
-        ("Party", "🎉")
+        ("Birthday", "stamp_birthday"),
+        ("Celebration", "stamp_celebration"),
+        ("Hangout", "stamp_hangout"),
+        ("Meetup", "stamp_meetup"),
+        ("Family", "stamp_family"),
+        ("Date", "stamp_date")
     ]
+    
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd MMM yyyy"
+        return formatter.string(from: dinnerDate)
+    }
+    
+    private var formattedTime: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "hh:mm a"
+        return formatter.string(from: dinnerDate)
+    }
     
     var body: some View {
         ZStack {
-            // 1. Tabletop Backdrop (Locked, ignores keyboard safe area)
-            Image("texture_linen_table")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
+            // Solid dark slate background
+            Color(red: 0.08, green: 0.10, blue: 0.13)
                 .edgesIgnoringSafeArea(.all)
-                .ignoresSafeArea(.keyboard)
             
-            // 2. Faint Floating Decorative Music Notes (Mockup parity)
-            Group {
-                Text("♪")
-                    .font(.system(size: 28, design: .serif))
-                    .foregroundColor(.inkPaper.opacity(0.12))
-                    .position(x: 60, y: 120)
-                Text("♫")
-                    .font(.system(size: 22, design: .serif))
-                    .foregroundColor(.inkPaper.opacity(0.08))
-                    .position(x: 320, y: 150)
-                Text("♩")
-                    .font(.system(size: 24, design: .serif))
-                    .foregroundColor(.inkPaper.opacity(0.1))
-                    .position(x: 80, y: 700)
-                Text("♬")
-                    .font(.system(size: 26, design: .serif))
-                    .foregroundColor(.inkPaper.opacity(0.08))
-                    .position(x: 290, y: 680)
-            }
-            .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Editorial Custom Header
-                HStack {
-                    Button(action: {
-                        withAnimation(.spring()) {
-                            if currentStep > 1 {
-                                currentStep -= 1
-                            } else {
-                                viewModel.appState = .welcome
-                            }
-                        }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 14, weight: .bold))
-                            Text(currentStep > 1 ? "PREV STEP" : "LEAVE")
-                                .font(.uiLabel(size: 11, weight: .bold))
-                        }
-                        .foregroundColor(.inkPaper.opacity(0.6))
-                    }
-                    
-                    Spacer()
-                    
-                    // Simple Progress Indicator
-                    Text("TICKET \(currentStep) OF 3")
-                        .font(.uiNumber(size: 11, weight: .bold))
-                        .foregroundColor(.terracottaOrange)
-                        .tracking(2)
-                    
-                    Spacer()
-                    
-                    // Invisible spacer for alignment
-                    Color.clear.frame(width: 80, height: 20)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+            VStack {
+                Spacer()
                 
-                // Screen Content
-                VStack {
-                    Spacer()
-                    
-                    // THE COMPREHENSIVE TICKET HERO (Fills the screen space beautifully)
-                    VStack(spacing: 0) {
-                        
-                        // UPPER TICKET: MASCOT & DIALOGUE (Above perforation line)
-                        ZStack(alignment: .topLeading) {
-                            // Faded circular postmark stamp in top-left
-                            Image("stamp_airmail_invite")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 80, height: 80)
-                                .opacity(0.12)
-                                .rotationEffect(.degrees(-12))
-                                .offset(x: 10, y: 10)
+                // DYNAMIC TICKET STUB CONTAINER
+                VStack(spacing: 0) {
+                    GeometryReader { cardGeo in
+                        VStack(spacing: 0) {
                             
-                            HStack(alignment: .center, spacing: 16) {
-                                // Clochey (Stands on light paper, outlines and legs 100% visible!)
-                                Image(getMascotForStep())
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 90, height: 90)
-                                    .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
-                                
-                                // Speech bubble pointing to Clochey
-                                Text(getSpeechForStep())
-                                    .font(.editorialSubheader(size: 13.5))
-                                    .foregroundColor(.carbonInk)
-                                    .lineSpacing(3)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(Color.carbonInk.opacity(0.15), lineWidth: 1)
-                                            .background(Color.inkPaper.opacity(0.95))
-                                    )
-                                    .overlay(
-                                        // Dialogue arrow pointing left to Clochey
-                                        Image(systemName: "triangle.fill")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.inkPaper)
-                                            .overlay(
-                                                Image(systemName: "triangle")
-                                                    .font(.system(size: 10))
-                                                    .foregroundColor(.carbonInk.opacity(0.15))
-                                            )
-                                            .rotationEffect(.degrees(-90))
-                                            .offset(x: -14)
-                                        , alignment: .leading
-                                    )
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 24)
-                            .padding(.bottom, 20)
-                        }
-                        
-                        // MIDDLE PERFORATION CUTOUTS (Double border ticket stub shape handles this)
-                        // It cuts in at 55% height
-                        
-                        // LOWER TICKET: INPUTS & ACTIONS (Below perforation line)
-                        VStack(spacing: 20) {
-                            if currentStep == 1 {
-                                // STEP 1 CONTENT
-                                VStack(spacing: 18) {
-                                    CustomUnderlineTextField(
-                                        label: "LOBBY TITLE",
-                                        placeholder: "Enter lobby title...",
-                                        text: $viewModel.lobbyTitle
-                                    )
-                                    
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("CHOOSE OCCASION")
-                                            .font(.uiLabel(size: 10, weight: .bold))
-                                            .foregroundColor(.carbonInk.opacity(0.4))
-                                            .tracking(1.5)
+                            // ==========================================
+                            // UPPER TICKET AREA (Exactly 70% of Card Height)
+                            // ==========================================
+                            VStack(alignment: .leading, spacing: 0) {
+                                if currentStep < 4 {
+                                    // ACTIVE FORM STAGES (Steps 1–3)
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Spacer() // Push mascot block down from upper edge
                                         
-                                        // Flow Wrapping Pills (Mockup parity - wraps, no clipping!)
-                                        FlowLayout(items: occasions.map { $0.0 }) { name in
-                                            let isSelected = viewModel.occasionType == name
-                                            let emoji = occasions.first(where: { $0.0 == name })?.1 ?? ""
+                                        // Mascot Dialogue Block
+                                        HStack(alignment: .center, spacing: 14) {
+                                            Image(getMascotForStep())
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(width: 80, height: 80)
+                                                .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
                                             
-                                            Button(action: {
-                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                                withAnimation(.spring()) {
-                                                    viewModel.occasionType = name
-                                                }
-                                            }) {
-                                                HStack(spacing: 4) {
-                                                    Text(emoji)
-                                                    Text(name)
-                                                        .font(.uiLabel(size: 12, weight: .bold))
-                                                        .foregroundColor(isSelected ? .inkPaper : .carbonInk)
-                                                }
+                                            Text(getSpeechForStep())
+                                                .font(.editorialSubheader(size: 13))
+                                                .foregroundColor(.carbonInk)
+                                                .lineSpacing(3)
                                                 .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
+                                                .padding(.vertical, 8)
                                                 .background(
-                                                    RoundedRectangle(cornerRadius: 15)
-                                                        .fill(isSelected ? Color.terracottaOrange : Color.clear)
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .stroke(Color.carbonInk.opacity(0.15), lineWidth: 1)
+                                                        .background(Color.inkPaper.opacity(0.95))
                                                 )
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 15)
-                                                        .stroke(isSelected ? Color.terracottaOrange : Color.carbonInk.opacity(0.2), lineWidth: 1)
+                                                    Image(systemName: "triangle.fill")
+                                                        .font(.system(size: 10))
+                                                        .foregroundColor(.inkPaper)
+                                                        .overlay(
+                                                            Image(systemName: "triangle")
+                                                                .font(.system(size: 10))
+                                                                .foregroundColor(.carbonInk.opacity(0.15))
+                                                        )
+                                                        .rotationEffect(.degrees(-90))
+                                                        .offset(x: -14)
+                                                    , alignment: .leading
                                                 )
-                                            }
-                                            .buttonStyle(PlainButtonStyle())
                                         }
-                                    }
-                                }
-                            } else if currentStep == 2 {
-                                // STEP 2 CONTENT
-                                VStack(spacing: 18) {
-                                    DatePicker("Dinner Timing", selection: Binding(
-                                        get: { Date() },
-                                        set: { _ in }
-                                    ), displayedComponents: [.date, .hourAndMinute])
-                                    .datePickerStyle(.compact)
-                                    .tint(.terracottaOrange)
-                                    .font(.uiLabel(size: 14))
-                                    .padding(.horizontal, 4)
-                                    
-                                    Divider().background(Color.subtleDottedLine)
-                                    
-                                    CustomUnderlineDecimalField(
-                                        label: "INDIVIDUAL BUDGET FLOOR (₹)",
-                                        placeholder: "e.g. 500",
-                                        value: Binding(
-                                            get: { viewModel.minimumBudget },
-                                            set: { viewModel.minimumBudget = $0 ?? 500 }
-                                        )
-                                    )
-                                }
-                            } else {
-                                // STEP 3 CONTENT (Location suggestions)
-                                VStack(spacing: 16) {
-                                    HStack(spacing: 12) {
-                                        LocationTypeButton(
-                                            title: "Meet Halfway",
-                                            subtitle: "Centroid midpoint",
-                                            icon: "person.3.fill",
-                                            isSelected: locationChoice == "halfway",
-                                            action: {
-                                                withAnimation(.spring()) {
-                                                    locationChoice = "halfway"
-                                                    viewModel.predefinedName = ""
-                                                    viewModel.predefinedLat = nil
-                                                    viewModel.predefinedLng = nil
-                                                }
-                                            }
-                                        )
                                         
-                                        LocationTypeButton(
-                                            title: "Lock Area",
-                                            subtitle: "Select custom spot",
-                                            icon: "mappin.and.ellipse",
-                                            isSelected: locationChoice == "neighborhood",
-                                            action: {
-                                                withAnimation(.spring()) {
-                                                    locationChoice = "neighborhood"
-                                                }
-                                            }
-                                        )
-                                    }
-                                    
-                                    if locationChoice == "neighborhood" {
-                                        Divider().background(Color.subtleDottedLine)
+                                        Spacer() // Spacing between Mascot and Form Panel
                                         
-                                        if !viewModel.predefinedName.isEmpty {
-                                            HStack {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.budgetStamp)
-                                                
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    Text("LOCKED LOCATION")
-                                                        .font(.uiLabel(size: 9, weight: .bold))
-                                                        .foregroundColor(.budgetStamp)
-                                                    Text(viewModel.predefinedName)
-                                                        .font(.uiLabel(size: 13, weight: .bold))
-                                                        .foregroundColor(.carbonInk)
-                                                        .lineLimit(1)
-                                                }
-                                                
-                                                Spacer()
-                                                
-                                                Button(action: {
-                                                    withAnimation(.spring()) {
-                                                        viewModel.predefinedName = ""
-                                                        viewModel.predefinedLat = nil
-                                                        viewModel.predefinedLng = nil
+                                        // Dynamic input selectors
+                                        VStack(spacing: 0) {
+                                            if currentStep == 1 {
+                                                // STEP 1: Integrated Input Panel
+                                                VStack(alignment: .leading, spacing: 18) {
+                                                    // Field 1: Title
+                                                    VStack(alignment: .leading, spacing: 6) {
+                                                        Text("GATHERING TITLE")
+                                                            .font(.uiLabel(size: 10, weight: .bold))
+                                                            .foregroundColor(.carbonInk.opacity(0.4))
+                                                            .tracking(1.5)
+                                                        
+                                                        ZStack(alignment: .leading) {
+                                                            if viewModel.lobbyTitle.isEmpty {
+                                                                Text("e.g. Aryan's Birthday...")
+                                                                    .font(.custom("Georgia-Bold", size: 18))
+                                                                    .foregroundColor(.carbonInk.opacity(0.45)) // Darker placeholder
+                                                            }
+                                                            TextField("", text: $viewModel.lobbyTitle)
+                                                                .font(.custom("Georgia-Bold", size: 18))
+                                                                .foregroundColor(.carbonInk)
+                                                                .tint(.terracottaOrange)
+                                                                .autocorrectionDisabled()
+                                                        }
                                                     }
-                                                }) {
-                                                    Image(systemName: "xmark.circle.fill")
-                                                        .foregroundColor(.carbonInk.opacity(0.3))
+                                                    
+                                                    Divider().background(Color.carbonInk.opacity(0.08))
+                                                    
+                                                    // Field 2: Date & Time Selector (Side-by-side native pills)
+                                                    VStack(alignment: .leading, spacing: 8) {
+                                                        Text("DATE & TIME OF GATHERING")
+                                                            .font(.uiLabel(size: 10, weight: .bold))
+                                                            .foregroundColor(.carbonInk.opacity(0.4))
+                                                            .tracking(1.5)
+                                                        
+                                                        HStack(spacing: 8) {
+                                                            DatePicker("", selection: $dinnerDate, displayedComponents: .date)
+                                                                .datePickerStyle(.compact)
+                                                                .tint(.terracottaOrange)
+                                                                .accentColor(.terracottaOrange)
+                                                                .colorScheme(.light) // Force light style for dark text
+                                                                .labelsHidden()
+                                                            
+                                                            Text("at")
+                                                                .font(.uiLabel(size: 13, weight: .bold))
+                                                                .foregroundColor(.carbonInk.opacity(0.4))
+                                                            
+                                                            DatePicker("", selection: $dinnerDate, displayedComponents: .hourAndMinute)
+                                                                .datePickerStyle(.compact)
+                                                                .tint(.terracottaOrange)
+                                                                .accentColor(.terracottaOrange)
+                                                                .colorScheme(.light) // Force light style for dark text
+                                                                .labelsHidden()
+                                                            
+                                                            Spacer()
+                                                        }
+                                                    }
+                                                    
+                                                    Divider().background(Color.carbonInk.opacity(0.08))
+                                                    
+                                                    // Field 3: Budget Floor
+                                                    VStack(alignment: .leading, spacing: 6) {
+                                                        Text("INDIVIDUAL BUDGET FLOOR (₹)")
+                                                            .font(.uiLabel(size: 10, weight: .bold))
+                                                            .foregroundColor(.carbonInk.opacity(0.4))
+                                                            .tracking(1.5)
+                                                        
+                                                        TextField("e.g. 500", text: $budgetInput)
+                                                            .font(.uiNumber(size: 16, weight: .semibold))
+                                                            .foregroundColor(.carbonInk)
+                                                            .tint(.terracottaOrange)
+                                                            .keyboardType(.numberPad)
+                                                            .onChange(of: budgetInput) { _, newValue in
+                                                                let filtered = newValue.filter { $0.isNumber }
+                                                                budgetInput = filtered
+                                                                if let parsed = Double(filtered) {
+                                                                    viewModel.minimumBudget = parsed
+                                                                }
+                                                            }
+                                                    }
                                                 }
+                                                .padding(18)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .stroke(Color.carbonInk.opacity(0.08), lineWidth: 1)
+                                                        .background(Color.inkPaper.opacity(0.6))
+                                                )
+                                            } else if currentStep == 2 {
+                                                // STEP 2: Custom Stamp Selection with selection rings
+                                                VStack(alignment: .leading, spacing: 16) {
+                                                    Text("SELECT GATHERING VIBE")
+                                                        .font(.uiLabel(size: 13, weight: .black))
+                                                        .foregroundColor(.carbonInk.opacity(0.6))
+                                                        .tracking(1.8)
+                                                    
+                                                    HStack {
+                                                        OccasionStampButton(name: "Birthday", assetName: "stamp_birthday", isSelected: viewModel.occasionType == "Birthday") {
+                                                            viewModel.occasionType = "Birthday"
+                                                        }
+                                                        Spacer()
+                                                        OccasionStampButton(name: "Celebration", assetName: "stamp_celebration", isSelected: viewModel.occasionType == "Celebration") {
+                                                            viewModel.occasionType = "Celebration"
+                                                        }
+                                                        Spacer()
+                                                        OccasionStampButton(name: "Hangout", assetName: "stamp_hangout", isSelected: viewModel.occasionType == "Hangout") {
+                                                            viewModel.occasionType = "Hangout"
+                                                        }
+                                                    }
+                                                    
+                                                    HStack {
+                                                        OccasionStampButton(name: "Meetup", assetName: "stamp_meetup", isSelected: viewModel.occasionType == "Meetup") {
+                                                            viewModel.occasionType = "Meetup"
+                                                        }
+                                                        Spacer()
+                                                        OccasionStampButton(name: "Family", assetName: "stamp_family", isSelected: viewModel.occasionType == "Family") {
+                                                            viewModel.occasionType = "Family"
+                                                        }
+                                                        Spacer()
+                                                        OccasionStampButton(name: "Date", assetName: "stamp_date", isSelected: viewModel.occasionType == "Date") {
+                                                            viewModel.occasionType = "Date"
+                                                        }
+                                                    }
+                                                }
+                                                .padding(.vertical, 12)
+                                            } else if currentStep == 3 {
+                                                // STEP 3: Location target selection
+                                                VStack(spacing: 16) {
+                                                    HStack(spacing: 12) {
+                                                        LocationTypeButton(
+                                                            title: "Meet Halfway",
+                                                            subtitle: "We'll find the middle",
+                                                            icon: "person.3.fill",
+                                                            isSelected: locationChoice == "halfway",
+                                                            action: {
+                                                                withAnimation(.spring()) {
+                                                                    locationChoice = "halfway"
+                                                                    viewModel.predefinedName = ""
+                                                                    viewModel.predefinedLat = nil
+                                                                    viewModel.predefinedLng = nil
+                                                                }
+                                                            }
+                                                        )
+                                                        
+                                                        LocationTypeButton(
+                                                            title: "Lock Area",
+                                                            subtitle: "Select custom spot",
+                                                            icon: "mappin.and.ellipse",
+                                                            isSelected: locationChoice == "neighborhood",
+                                                            action: {
+                                                                withAnimation(.spring()) {
+                                                                    locationChoice = "neighborhood"
+                                                                }
+                                                            }
+                                                        )
+                                                    }
+                                                    
+                                                    if locationChoice == "neighborhood" {
+                                                        Divider().background(Color.subtleDottedLine)
+                                                        
+                                                        Button(action: {
+                                                            showingMapPicker = true
+                                                        }) {
+                                                            HStack(spacing: 10) {
+                                                                Image(systemName: viewModel.predefinedName.isEmpty ? "magnifyingglass" : "checkmark.circle.fill")
+                                                                    .font(.system(size: 15, weight: .semibold))
+                                                                    .foregroundColor(viewModel.predefinedName.isEmpty ? .carbonInk.opacity(0.4) : .terracottaOrange)
+                                                                
+                                                                Text(viewModel.predefinedName.isEmpty ? "Search location..." : viewModel.predefinedName)
+                                                                    .font(.system(size: 15, weight: viewModel.predefinedName.isEmpty ? .regular : .semibold, design: .rounded))
+                                                                    .foregroundColor(viewModel.predefinedName.isEmpty ? .carbonInk.opacity(0.4) : .carbonInk)
+                                                                    .lineLimit(1)
+                                                                
+                                                                Spacer()
+                                                                
+                                                                if !viewModel.predefinedName.isEmpty {
+                                                                    Button(action: {
+                                                                        viewModel.predefinedName = ""
+                                                                        viewModel.predefinedLat = nil
+                                                                        viewModel.predefinedLng = nil
+                                                                    }) {
+                                                                        Image(systemName: "xmark.circle.fill")
+                                                                            .font(.system(size: 16))
+                                                                            .foregroundColor(.carbonInk.opacity(0.25))
+                                                                    }
+                                                                }
+                                                            }
+                                                            .padding(.vertical, 12)
+                                                            .padding(.horizontal, 14)
+                                                            .background(.ultraThinMaterial)
+                                                            .cornerRadius(12)
+                                                            .overlay(
+                                                                RoundedRectangle(cornerRadius: 12)
+                                                                    .stroke(
+                                                                        viewModel.predefinedName.isEmpty
+                                                                            ? Color.carbonInk.opacity(0.10)
+                                                                            : Color.terracottaOrange.opacity(0.4),
+                                                                        lineWidth: 1.2
+                                                                    )
+                                                            )
+                                                        }
+                                                        .buttonStyle(PlainButtonStyle())
+                                                        .sheet(isPresented: $showingMapPicker) {
+                                                            LocationPickerSheet(viewModel: viewModel)
+                                                        }
+                                                    }
+                                                }
+                                                .padding(.vertical, 8)
                                             }
-                                            .padding(10)
-                                            .background(Color.budgetStamp.opacity(0.08))
-                                            .cornerRadius(8)
-                                        } else {
-                                            LocationSearchView(viewModel: viewModel)
                                         }
+                                        
+                                        Spacer() // Push panel away from perforation line
                                     }
+                                    .padding(.horizontal, 20)
+                                } else {
+                                    // STEP 4: THE FULLY PRINTED DINNER TICKET
+                                    VStack(alignment: .leading, spacing: 20) {
+                                        // Top branding line
+                                        HStack {
+                                            Text("VIBEAT DINING PASS")
+                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.carbonInk.opacity(0.4))
+                                                .tracking(2)
+                                            Spacer()
+                                            Image("clochey_reveal")
+                                                .resizable()
+                                                .frame(width: 32, height: 32)
+                                                .shadow(color: .black.opacity(0.1), radius: 2)
+                                        }
+                                        
+                                        // Gathering Name (Bold Serif Print)
+                                        Text(viewModel.lobbyTitle.uppercased())
+                                            .font(.custom("Georgia-Bold", size: 28))
+                                            .foregroundColor(.carbonInk)
+                                            .lineLimit(2)
+                                            .padding(.vertical, 4)
+                                        
+                                        // Typewriter Details
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            Text("OCCASION: \(viewModel.occasionType.uppercased())")
+                                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.carbonInk.opacity(0.7))
+                                            
+                                            Text("DATE: \(formattedDate.uppercased())")
+                                                .font(.system(size: 12, design: .monospaced))
+                                                .foregroundColor(.carbonInk.opacity(0.7))
+                                            
+                                            Text("TIME: \(formattedTime.uppercased())")
+                                                .font(.system(size: 12, design: .monospaced))
+                                                .foregroundColor(.carbonInk.opacity(0.7))
+                                            
+                                            Text("BUDGET FLOOR: INR \(Int(viewModel.minimumBudget))")
+                                                .font(.system(size: 12, design: .monospaced))
+                                                .foregroundColor(.carbonInk.opacity(0.7))
+                                            
+                                            Text("DESTINATION: \(viewModel.predefinedName.isEmpty ? "MEET HALFWAY" : viewModel.predefinedName.uppercased())")
+                                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.terracottaOrange)
+                                        }
+                                        
+                                        // Faded Stamp Background Overlay
+                                        HStack {
+                                            Spacer()
+                                            Image(occasions.first(where: { $0.0 == viewModel.occasionType })?.1 ?? "stamp_airmail_invite")
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(width: 80, height: 80)
+                                                .opacity(0.2)
+                                                .rotationEffect(.degrees(15))
+                                        }
+                                        .padding(.top, -10)
+                                    }
+                                    .padding(.horizontal, 24)
+                                    .padding(.top, 36)
                                 }
                             }
+                            .frame(height: cardGeo.size.height * 0.70, alignment: .top)
                             
-                            Spacer(minLength: 10)
-                            
-                            // BOTTOM FLOW ACTION BUTTON (Contained inside ticket card body)
-                            Button(action: {
-                                Task {
-                                    if currentStep < 3 {
-                                        withAnimation(.spring()) {
+                            // ==========================================
+                            // LOWER TICKET AREA (Exactly 30% of Card Height)
+                            // ==========================================
+                            VStack {
+                                Spacer()
+                                
+                                if currentStep < 4 {
+                                    // Setup Action Button (Styled as "NEXT" / "CREATE TABLE")
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
                                             currentStep += 1
                                         }
-                                    } else {
-                                        await viewModel.updateSettings()
-                                        withAnimation(.spring()) {
-                                            viewModel.appState = .lobby
-                                        }
+                                    }) {
+                                        Text(currentStep == 3 ? "CREATE TABLE" : "NEXT")
+                                            .font(.uiLabel(size: 14, weight: .black))
+                                            .foregroundColor(.inkPaper)
+                                            .tracking(1.5)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 15)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(isStepValid() ? Color.terracottaOrange : Color.carbonInk.opacity(0.25))
+                                            )
+                                            .shadow(color: .black.opacity(isStepValid() ? 0.2 : 0), radius: 4, x: 0, y: 3)
                                     }
+                                    .disabled(!isStepValid())
+                                    .padding(.horizontal, 24)
+                                } else {
+                                    // Step 4: Red Wax Seal Stamp
+                                    Image("ui_wax_seal_red")
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 90, height: 90)
+                                        .shadow(color: .black.opacity(0.35), radius: 5, x: 0, y: 4)
+                                        .scaleEffect(isSealStamped ? 1.0 : 4.0)
+                                        .opacity(isSealStamped ? 1.0 : 0.0)
+                                        .onAppear {
+                                            withAnimation(.spring(response: 0.6, dampingFraction: 0.5)) {
+                                                isSealStamped = true
+                                            }
+                                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                            
+                                            // Automatically navigate to active lobby
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                                Task {
+                                                    await viewModel.updateSettings()
+                                                    withAnimation(.spring()) {
+                                                        viewModel.path.append(.lobby)
+                                                    }
+                                                }
+                                            }
+                                        }
                                 }
-                            }) {
-                                HStack {
-                                    Text(currentStep < 3 ? "CONTINUE ORDER" : "LOCK & OPEN LOBBY")
-                                        .font(.uiLabel(size: 13.5, weight: .black))
-                                        .foregroundColor(.inkPaper)
-                                        .tracking(1.5)
-                                    
-                                    Image(systemName: "arrow.right")
-                                        .font(.footnote)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 15)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(isStepValid() ? Color.terracottaOrange : Color.carbonInk.opacity(0.25))
-                                )
-                                .shadow(color: .black.opacity(isStepValid() ? 0.2 : 0), radius: 4, x: 0, y: 3)
+                                
+                                Spacer()
                             }
-                            .disabled(!isStepValid())
+                            .frame(height: cardGeo.size.height * 0.30)
+                            
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 24)
-                        .padding(.bottom, 24)
                     }
-                    .frame(height: 580) // Set vertical height to fill the screen proportion
-                    .ticketStubStyle(cutoutRatio: 0.36, cutoutRadius: 10)
-                    .frame(maxWidth: 350)
-                    
-                    Spacer()
                 }
+                .ticketStubStyle(cutoutRatio: 0.70, cutoutRadius: 10)
+                .frame(height: UIScreen.main.bounds.height * 0.74) // Tall ticket aspect ratio
+                .padding(.horizontal, 24)
+                .padding(.vertical, 32)
+                
+                Spacer()
             }
         }
+        .ignoresSafeArea(.keyboard)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if currentStep > 1 {
+                        withAnimation(.spring()) {
+                            currentStep -= 1
+                        }
+                    } else {
+                        // Pop from NavigationStack path
+                        withAnimation {
+                            _ = viewModel.path.popLast()
+                        }
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                        Text("Back")
+                    }
+                    .foregroundColor(.terracottaOrange)
+                }
+            }
         }
     }
     
     private func isStepValid() -> Bool {
         switch currentStep {
         case 1:
-            return !viewModel.lobbyTitle.isEmpty
+            return !viewModel.lobbyTitle.isEmpty && !budgetInput.isEmpty
         case 2:
-            return viewModel.minimumBudget >= 300
+            return !viewModel.occasionType.isEmpty
         case 3:
             return locationChoice == "halfway" || !viewModel.predefinedName.isEmpty
         default:
@@ -356,11 +739,11 @@ struct LobbySetupView: View {
     private func getSpeechForStep() -> String {
         switch currentStep {
         case 1:
-            return "Greetings! Let's get your table set up. First, what should we call this gathering?"
+            return "Greetings! Let's get your table set up. What is the name of this gathering?"
         case 2:
-            return "Perfect! And what is the minimum budget floor we should target for everyone's starting value?"
+            return "Perfect! And what is the occasion for this dining table?"
         case 3:
-            return "Lastly, where should we meet? Halfway centroid, or should we lock in a specific neighborhood?"
+            return "Lastly, where should we meet? Let us find the middle, or lock in a specific spot?"
         default:
             return "Preparing details..."
         }
@@ -377,6 +760,75 @@ struct LobbySetupView: View {
         default:
             return "clochey_welcome"
         }
+    }
+}
+
+// MARK: - Custom UI: Occasion Stamp Option Button
+struct OccasionStampButton: View {
+    let name: String
+    let assetName: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    // Dynamic size scaling based on asset shape
+    private var imageSize: CGFloat {
+        if assetName == "stamp_celebration" {
+            return 82 // Zoomed champagne toast
+        } else if assetName == "stamp_hangout" {
+            return 82 // Zoomed pizza
+        } else {
+            return 74 // Default balanced size
+        }
+    }
+    
+    // Custom offset to visually align/center assets that have shadows or off-center perspective
+    private var imageOffset: CGFloat {
+        if assetName == "stamp_hangout" {
+            return -4 // Shift pizza up slightly to counter perspective shadow imbalance
+        } else {
+            return 0
+        }
+    }
+    
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            VStack(spacing: 6) {
+                ZStack {
+                    // Tactile Grey Outer Stroke (always visible to indicate tappability)
+                    Circle()
+                        .stroke(Color.carbonInk.opacity(0.08), lineWidth: 1.5)
+                        .frame(width: 86, height: 86)
+                        .scaleEffect(isSelected ? 0.92 : 1.0)
+                        .opacity(isSelected ? 0.0 : 1.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                    
+                    // Selected Orange Ring
+                    Circle()
+                        .stroke(Color.terracottaOrange, lineWidth: 2)
+                        .frame(width: 86, height: 86)
+                        .scaleEffect(isSelected ? 1.0 : 0.92)
+                        .opacity(isSelected ? 1.0 : 0.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                    
+                    // Stamp Image
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: imageSize, height: imageSize)
+                        .offset(y: imageOffset)
+                        .shadow(color: .black.opacity(isSelected ? 0.15 : 0.05), radius: isSelected ? 3 : 1, x: 0, y: isSelected ? 1.5 : 0)
+                }
+                .frame(width: 90, height: 90)
+                
+                Text(name.uppercased())
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(isSelected ? .terracottaOrange : .carbonInk.opacity(0.55))
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

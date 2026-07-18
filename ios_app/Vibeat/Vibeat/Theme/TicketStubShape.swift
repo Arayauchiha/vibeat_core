@@ -170,7 +170,7 @@ struct EmptyTicketPreview: View {
                     Spacer()
                 }
                 .frame(width: 330, height: 560)
-                .ticketStubStyle(cutoutRatio: 0.36, cutoutRadius: 10, cornerRadius: 12)
+                .ticketStubStyle(cutoutRatio: 0.70, cutoutRadius: 10, cornerRadius: 12)
             }
         }
     }

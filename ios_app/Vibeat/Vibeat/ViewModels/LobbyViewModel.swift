@@ -3,46 +3,44 @@ import SwiftUI
 import Combine
 import MapKit
 
-enum AppState {
-    case welcome
+enum AppScreen: Hashable {
     case hostSetup
+    case joinSetup
     case lobby
     case loading
     case results
 }
 
-// MARK: - MapKit Search Completer Helper
-class LocationSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
-    @Published var searchQuery = ""
-    @Published var results: [MKLocalSearchCompletion] = []
-    
-    private var completer: MKLocalSearchCompleter
-    private var cancellable: AnyCancellable?
-    
+// MARK: - MapKit Location Search Service
+/// Native Apple MapKit location search using MKLocalSearchCompleter.
+/// No API keys needed — built into iOS.
+@MainActor
+class LocationSearchService: NSObject, ObservableObject {
+    @Published var searchQuery: String = "" {
+        didSet { completer.queryFragment = searchQuery }
+    }
+    @Published var completions: [MKLocalSearchCompletion] = []
+    @Published var selectedLocation: String? = nil
+    @Published var selectedSubtitle: String? = nil
+
+    private let completer = MKLocalSearchCompleter()
+
     override init() {
-        completer = MKLocalSearchCompleter()
         super.init()
         completer.delegate = self
-        // Focus search on addresses and neighborhoods
-        completer.resultTypes = .address
-        
-        cancellable = $searchQuery
-            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
-            .sink { [weak self] query in
-                if query.isEmpty {
-                    self?.results = []
-                } else {
-                    self?.completer.queryFragment = query
-                }
-            }
+        completer.resultTypes = [.address, .pointOfInterest]
     }
-    
-    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        self.results = completer.results
+}
+
+extension LocationSearchService: MKLocalSearchCompleterDelegate {
+    nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        Task { @MainActor in
+            self.completions = completer.results
+        }
     }
-    
-    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
-        print("Completer failed with error: \(error.localizedDescription)")
+
+    nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        print("Location search error: \(error.localizedDescription)")
     }
 }
 
@@ -53,14 +51,14 @@ class LobbyViewModel: ObservableObject {
     private let baseURL = "https://vibeat-backend-jn0q.onrender.com"
     
     // UI State
-    @Published var appState: AppState = .welcome
+    @Published var path: [AppScreen] = []
     @Published var activePlayers: [Player] = []
     @Published var recommendations: VibeatResponse?
     @Published var errorMessage: String? = nil
     
     // Global Lobby Settings
     @Published var lobbyTitle: String = ""
-    @Published var occasionType: String = "Casual"
+    @Published var occasionType: String = "Birthday"
     @Published var minimumBudget: Double = 500
     
     // Location Settings
@@ -70,7 +68,7 @@ class LobbyViewModel: ObservableObject {
     @Published var predefinedLng: Double? = nil
     
     // MapKit Autocomplete Search Engine
-    @Published var searchCompleter = LocationSearchCompleter()
+    @Published var searchCompleter = LocationSearchService()
     
     // MARK: - Geocode MapKit Selection
     func selectLocation(_ completion: MKLocalSearchCompletion) async {
@@ -107,14 +105,14 @@ class LobbyViewModel: ObservableObject {
             
             // Reset to default variables
             self.lobbyTitle = ""
-            self.occasionType = "Casual"
+            self.occasionType = "Birthday"
             self.minimumBudget = 500
             self.predefinedName = ""
             self.predefinedLat = nil
             self.predefinedLng = nil
             self.searchCompleter.searchQuery = ""
             
-            self.appState = .welcome
+            self.path = []
         } catch {
             self.errorMessage = "Failed to clear lobby: \(error.localizedDescription)"
         }
@@ -213,7 +211,7 @@ class LobbyViewModel: ObservableObject {
     
     // MARK: - API Action: Calculate Matrix (Find Matches)
     func calculateRecommendations() async {
-        self.appState = .loading
+        self.path.append(.loading)
         self.errorMessage = nil
         
         guard let url = URL(string: "\(baseURL)/calculate-matrices") else { return }
@@ -224,16 +222,17 @@ class LobbyViewModel: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                self.appState = .lobby
+                self.path.removeAll { $0 == .loading }
                 self.errorMessage = "Calculation failed on server side (status code != 200)."
                 return
             }
             
             let decoded = try JSONDecoder().decode(VibeatResponse.self, from: data)
             self.recommendations = decoded
-            self.appState = .results
+            self.path.removeAll { $0 == .loading }
+            self.path.append(.results)
         } catch {
-            self.appState = .lobby
+            self.path.removeAll { $0 == .loading }
             self.errorMessage = "Failed to fetch results: \(error.localizedDescription)"
         }
     }
