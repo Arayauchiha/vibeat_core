@@ -289,10 +289,6 @@ struct LongPolling: APIError {
 }
 
 enum APIErrorResolver {
-    nonisolated static func longPollingResponse(_: LongPollingResponse) -> LongPolling {
-        LongPolling()
-    }
-
     nonisolated static func error(from statusCode: Int, with error: HTTPErrorResponse? = nil) -> any LocalizedError { // swiftlint:disable:this cyclomatic_complexity
         switch statusCode {
         case 400:

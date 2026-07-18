@@ -11,12 +11,11 @@ struct OnboardingPage: Identifiable {
     let id = UUID()
     let title: String
     let caption: String
-    /// Asset name for the illustration — drop your images into Assets.xcassets with these names.
     let imageName: String
 }
 
 struct OnboardingView: View {
-    @Binding var showLogin: Bool
+    @State private var showLogin: Bool = false
     @State private var currentPage = 0
 
     private let pages: [OnboardingPage] = [
@@ -61,6 +60,9 @@ struct OnboardingView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
             .padding(.top, 8)
+            .navigationDestination(isPresented: $showLogin) {
+                LoginView()
+            }
         }
         .background(Color.black)
         .preferredColorScheme(.dark)
@@ -104,8 +106,4 @@ private struct OnboardingPageView: View {
             Spacer(minLength: 48)
         }
     }
-}
-
-#Preview {
-    OnboardingView(showLogin: .constant(false))
 }

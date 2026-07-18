@@ -8,6 +8,7 @@
 import Foundation
 import OSLog
 import UIKit
+// 10 13 1 88
 
 nonisolated private let logger: Logger = .init(subsystem: "Vibeat", category: "NETWORK")
 
@@ -19,19 +20,6 @@ enum HTTPMethod: String {
     case PATCH
 }
 
-struct LongPollingResponse: Codable, Sendable {
-    enum CodingKeys: String, CodingKey {
-        case status
-        case taskIdentifier = "task_id"
-        case detail
-        case retryAfterSeconds = "retry_after_seconds"
-    }
-
-    let status: String
-    let taskIdentifier: String
-    let detail: String
-    let retryAfterSeconds: Double
-}
 
 struct NetworkResponse<T: Codable & Sendable>: Codable, Sendable {
     enum CodingKeys: String, CodingKey {
@@ -71,54 +59,6 @@ actor MCNetworkManager {
     nonisolated func patch<T: Codable & Sendable>(url: String, queryParameters: [String: any Codable]? = nil, body: Data? = nil, headers: [String: String]? = nil) async throws -> NetworkResponse<T> {
         try await request(url: url, method: .PATCH, body: body, queryParameters: queryParameters, headers: headers)
     }
-
-    func fetchStreamedData<T: Codable & Sendable>(
-        _ method: HTTPMethod,
-        url: String,
-        queryParameters: [String: any Codable]? = nil,
-        headers: [String: String]? = nil
-    ) -> AsyncThrowingStream<T, any Error> {
-        AsyncThrowingStream { continuation in
-            Task {
-                do {
-                    let finalURL = buildURLString(url: url, queryParameters: queryParameters)
-
-                    var request = URLRequest(url: finalURL)
-                    request.httpMethod = method.rawValue
-                    headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
-
-                    logger.info("Starting streamed request to \(finalURL.absoluteString)")
-
-                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
-
-                    guard let httpResponse = response as? HTTPURLResponse,
-                          httpResponse.statusCode <= 400 else {
-                        throw URLError(.badServerResponse)
-                    }
-
-                    for try await line in bytes.lines {
-                        guard let jsonData = line.data(using: .utf8) else {
-                            continue
-                        }
-
-                        if let item: T = try jsonData.decodeUsingJSONDecoder() {
-                            logger.debug("Stream item: \(String(describing: item))")
-
-                            continuation.yield(item)
-                        }
-                    }
-
-                    continuation.finish()
-
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-        }
-    }
-
-    // MARK: Private
-
 
     nonisolated private func buildURLString(
         url: String = "",

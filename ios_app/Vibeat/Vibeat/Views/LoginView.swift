@@ -9,73 +9,62 @@ import AuthenticationServices
 import SwiftUI
 
 struct LoginView: View {
-    @State private var email = ""
-    @State private var password = ""
-    @FocusState private var focusedField: Field?
-
-    private enum Field {
-        case email, password
-    }
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    brandHeader
-                        .padding(.top, 48)
-                        .padding(.bottom, 40)
+        VStack(spacing: 0) {
+            Spacer()
 
-                    credentialsSection
-                        .padding(.bottom, 20)
+            brandHeader
+                .padding(.bottom, 56)
 
-                    submitButton
-                        .padding(.bottom, 28)
-
-                    continueDivider
-                        .padding(.bottom, 28)
-
-                    SignInWithAppleButton(.signIn) { request in
-                        request.requestedScopes = [.fullName, .email]
-                    } onCompletion: { _ in
-                        // Wire up Apple auth when ready
-                    }
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                    )
-
-                    Spacer(minLength: 40)
-
-                    accountSwitchRow
-                        .padding(.top, 24)
-                        .padding(.bottom, 16)
-                }
-                .padding(.horizontal, 28)
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                Task { await handleAppleLogin(result) }
             }
-            .scrollDismissesKeyboard(.interactively)
-            .background(Color.black.ignoresSafeArea())
-            .navigationDestination(for: AuthRoute.self) { route in
-                switch route {
-                case .signUp:
-                    SignUpView()
+            .signInWithAppleButtonStyle(.black)
+            .frame(height: 52)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+            )
+            .disabled(isSubmitting)
+            .overlay {
+                if isSubmitting {
+                    ProgressView()
+                        .tint(.white)
                 }
             }
+
+            Spacer()
+            Spacer()
         }
+        .padding(.horizontal, 28)
+        .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .alert(
+            "Login Failed",
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { isPresented in
+                    if !isPresented { errorMessage = nil }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "Something went wrong. Please try again.")
+        }
     }
 
     // MARK: - Brand
 
     private var brandHeader: some View {
         VStack(spacing: 14) {
-            // Swap for your logo asset when ready:
-            // Image("app_logo")
-            //     .resizable()
-            //     .scaledToFit()
-            //     .frame(width: 72, height: 72)
             Image(systemName: "fork.knife.circle.fill")
                 .resizable()
                 .scaledToFit()
@@ -90,141 +79,41 @@ struct LoginView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Fields
-
-    private var credentialsSection: some View {
-        VStack(spacing: 14) {
-            authField(
-                title: "Email",
-                text: $email,
-                field: .email,
-                contentType: .emailAddress,
-                keyboard: .emailAddress,
-                isSecure: false
-            )
-
-            authField(
-                title: "Password",
-                text: $password,
-                field: .password,
-                contentType: .password,
-                keyboard: .default,
-                isSecure: true
-            )
-        }
-    }
-
-    private func authField(
-        title: String,
-        text: Binding<String>,
-        field: Field,
-        contentType: UITextContentType,
-        keyboard: UIKeyboardType,
-        isSecure: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.white.opacity(0.7))
-
-            Group {
-                if isSecure {
-                    SecureField(title, text: text)
-                } else {
-                    TextField(title, text: text)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(keyboard)
-                        .autocorrectionDisabled()
-                }
-            }
-            .textContentType(contentType)
-            .focused($focusedField, equals: field)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.white.opacity(focusedField == field ? 0.35 : 0.12), lineWidth: 1)
-            )
-        }
-    }
-
-    // MARK: - Submit
-
-    private var submitButton: some View {
-        Button {
-            focusedField = nil
-            // Wire up email/password auth when ready
-        } label: {
-            Text("Log In")
-                .font(.headline)
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-    }
-
-    // MARK: - Divider
-
-    private var continueDivider: some View {
-        HStack(spacing: 14) {
-            Rectangle()
-                .fill(Color.white.opacity(0.2))
-                .frame(height: 1)
-
-            Text("or Continue with")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.55))
-                .layoutPriority(1)
-
-            Rectangle()
-                .fill(Color.white.opacity(0.2))
-                .frame(height: 1)
-        }
-    }
-
-    // MARK: - Account switch
-
-    private var accountSwitchRow: some View {
-        HStack(spacing: 4) {
-            Text("Don't have an account?")
-                .foregroundStyle(.white.opacity(0.55))
-
-            NavigationLink("Sign Up", value: AuthRoute.signUp)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-        }
-        .font(.subheadline)
-        .frame(maxWidth: .infinity)
-    }
-    @Environment(\.dismiss) private var dismiss
-
-    private func submitEmailLogin() async throws {
-    }
+    // MARK: - Auth actions
 
     private func handleAppleLogin(_ result: Result<ASAuthorization, any Error>) async {
         switch result {
-        case let .success(auth):
-            // TODO: implement Apple login
-            _ = auth
-            break
+        case let .success(authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData = credential.identityToken,
+                let idToken = String(data: tokenData, encoding: .utf8)
+            else {
+                errorMessage = "Couldn't read your Apple ID credentials. Please try again."
+                return
+            }
+
+            isSubmitting = true
+            defer { isSubmitting = false }
+
+            do {
+                try await VibeatAPIClient.shared.login(idToken: idToken)
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
 
         case let .failure(error):
-            // TODO: handle login failure
-            print("Apple login failed: \(error.localizedDescription)")
-            break
+            // Apple returns this when the user cancels the sheet — no need to surface it as an error.
+            let nsError = error as NSError
+            if nsError.domain == ASAuthorizationError.errorDomain,
+               nsError.code == ASAuthorizationError.canceled.rawValue {
+                return
+            }
+
+            errorMessage = error.localizedDescription
         }
     }
-    
-}
-
-private enum AuthRoute: Hashable {
-    case signUp
 }
 
 #Preview {
