@@ -12,8 +12,6 @@ actor VibeatAPIClient {
 
     // MARK: - Auth
 
-    /// Exchanges a Firebase/Apple/Google id token for our own access + refresh tokens,
-    /// then persists both in the Keychain.
     @discardableResult
     func login(idToken: String) async throws -> LoginResponse {
         let body = LoginRequestBody(idToken: idToken)
