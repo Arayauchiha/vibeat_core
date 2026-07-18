@@ -210,18 +210,14 @@ struct LoginView: View {
     private func handleAppleLogin(_ result: Result<ASAuthorization, any Error>) async {
         switch result {
         case let .success(auth):
-//            do {
-//                guard let credential = auth.credential as? ASAuthorizationAppleIDCredential,
-//                      let tokenData = credential.identityToken,
-//                      let tokenString = String(data: tokenData, encoding: .utf8) else {
-//                    throw Error()
-//                }
-
-// TODO:
-
+            // TODO: implement Apple login
+            _ = auth
+            break
 
         case let .failure(error):
-//            TODO
+            // TODO: handle login failure
+            print("Apple login failed: \(error.localizedDescription)")
+            break
         }
     }
     

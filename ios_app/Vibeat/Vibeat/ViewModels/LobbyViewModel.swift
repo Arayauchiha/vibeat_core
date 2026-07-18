@@ -33,13 +33,11 @@ class LocationSearchService: NSObject, ObservableObject {
 }
 
 extension LocationSearchService: MKLocalSearchCompleterDelegate {
-    nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        Task { @MainActor in
-            self.completions = completer.results
-        }
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        completions = completer.results
     }
 
-    nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
         print("Location search error: \(error.localizedDescription)")
     }
 }

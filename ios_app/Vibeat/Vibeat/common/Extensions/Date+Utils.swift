@@ -10,6 +10,6 @@ extension Date {
             return date
         }
 
-        fatalError(Quote.randomQuote.displayString)
+        fatalError()
     }
 }
