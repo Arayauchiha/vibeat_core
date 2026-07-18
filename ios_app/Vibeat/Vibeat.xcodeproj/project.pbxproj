@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 110;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXFileReference section */
@@ -21,8 +21,10 @@
 /* Begin PBXFrameworksBuildPhase section */
 		9295C4953003A2C8006DFF95 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -55,6 +57,7 @@
 				9295C4963003A2C8006DFF95 /* Resources */,
 			);
 			buildRules = (
+			);
 			);
 			fileSystemSynchronizedGroups = (
 				9295C49A3003A2C8006DFF95 /* Vibeat */,
@@ -101,21 +104,25 @@
 /* Begin PBXResourcesBuildPhase section */
 		9295C4963003A2C8006DFF95 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9295C4943003A2C8006DFF95 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		9295C4A13003A2C9006DFF95 /* Debug configuration for PBXProject "Vibeat" */ = {
+		9295C4A13003A2C9006DFF95 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -179,7 +186,7 @@
 			};
 			name = Debug;
 		};
-		9295C4A23003A2C9006DFF95 /* Release configuration for PBXProject "Vibeat" */ = {
+		9295C4A23003A2C9006DFF95 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -236,7 +243,7 @@
 			};
 			name = Release;
 		};
-		9295C4A43003A2C9006DFF95 /* Debug configuration for PBXNativeTarget "Vibeat" */ = {
+		9295C4A43003A2C9006DFF95 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -261,15 +268,16 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_SUPPRESS_WARNINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		9295C4A53003A2C9006DFF95 /* Release configuration for PBXNativeTarget "Vibeat" */ = {
+		9295C4A53003A2C9006DFF95 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -294,10 +302,11 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_SUPPRESS_WARNINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -308,21 +317,22 @@
 		9295C4933003A2C7006DFF95 /* Build configuration list for PBXProject "Vibeat" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				9295C4A13003A2C9006DFF95 /* Debug configuration for PBXProject "Vibeat" */,
-				9295C4A23003A2C9006DFF95 /* Release configuration for PBXProject "Vibeat" */,
+				9295C4A13003A2C9006DFF95 /* Debug */,
+				9295C4A23003A2C9006DFF95 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		9295C4A33003A2C9006DFF95 /* Build configuration list for PBXNativeTarget "Vibeat" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				9295C4A43003A2C9006DFF95 /* Debug configuration for PBXNativeTarget "Vibeat" */,
-				9295C4A53003A2C9006DFF95 /* Release configuration for PBXNativeTarget "Vibeat" */,
+				9295C4A43003A2C9006DFF95 /* Debug */,
+				9295C4A53003A2C9006DFF95 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
 	rootObject = 9295C4903003A2C7006DFF95 /* Project object */;
-	validationLevel = 1;
 }

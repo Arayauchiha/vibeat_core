@@ -1,0 +1,64 @@
+import Foundation
+import Security
+
+enum ValidKeychainKeys: String, CaseIterable {
+    case accessToken
+    case refreshToken
+    case password
+    case appleIdentifier
+}
+
+enum KeychainHelper {
+    @discardableResult
+    nonisolated static func set(_ value: String?, forKey key: ValidKeychainKeys) -> Bool {
+        guard let value else {
+            return false
+        }
+        guard let data = value.data(using: .utf8) else {
+            return false
+        }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key.rawValue,
+            kSecValueData as String: data
+        ]
+
+        SecItemDelete(query as CFDictionary)
+
+        return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+    }
+
+    @discardableResult
+    nonisolated static func get(_ key: ValidKeychainKeys) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key.rawValue,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var dataTypeRef: CFTypeRef?
+        let status = unsafe SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+
+        if status == errSecSuccess, let data = dataTypeRef as? Data {
+            return String(data: data, encoding: .utf8)
+        }
+        return nil
+    }
+
+    @discardableResult
+    nonisolated static func remove(_ key: ValidKeychainKeys) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key.rawValue
+        ]
+        return SecItemDelete(query as CFDictionary) == errSecSuccess
+    }
+
+    nonisolated static func purge() {
+        for key in ValidKeychainKeys.allCases {
+            remove(key)
+        }
+    }
+}
