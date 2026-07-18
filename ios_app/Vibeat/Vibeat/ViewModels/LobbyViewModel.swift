@@ -53,11 +53,14 @@ class LobbyViewModel: ObservableObject {
     @Published var activePlayers: [Player] = []
     @Published var recommendations: VibeatResponse?
     @Published var errorMessage: String? = nil
+    @Published var isTicketSubmitted: Bool = false
     
     // Global Lobby Settings
     @Published var lobbyTitle: String = ""
     @Published var occasionType: String = "Birthday"
     @Published var minimumBudget: Double = 500
+    @Published var lobbyCode: String = ""
+    @Published var isHost: Bool = false
     
     // Location Settings
     @Published var travelVarianceMode: String = "default"
@@ -89,6 +92,42 @@ class LobbyViewModel: ObservableObject {
         }
     }
     
+    func generateLobbyCode() {
+        let numbers = "0123456789"
+        self.lobbyCode = String((0..<6).map { _ in numbers.randomElement()! })
+    }
+    
+    func togglePlayerReady(name: String) {
+        if let idx = activePlayers.firstIndex(where: { $0.name == name }) {
+            var updated = activePlayers[idx]
+            updated.isReady.toggle()
+            activePlayers[idx] = updated
+        }
+    }
+    
+    func resetLobbyState() {
+        self.activePlayers = [
+            Player(name: "Rohan", lat: 28.6139, lng: 77.2090, budget: 800, cuisines: ["Italian"], cards: ["HDFC"], wantsAlcohol: true, atmosphere: "lively", specificDish: nil, isReady: true),
+            Player(name: "Sneha", lat: 28.6139, lng: 77.2090, budget: 1500, cuisines: ["Chinese", "Asian"], cards: ["SBI"], wantsAlcohol: false, atmosphere: "cozy", specificDish: nil, isReady: false),
+            Player(name: "Kabir", lat: 28.6139, lng: 77.2090, budget: 1200, cuisines: ["Continental"], cards: ["AXIS"], wantsAlcohol: true, atmosphere: "romantic", specificDish: nil, isReady: true)
+        ]
+        self.recommendations = nil
+        self.errorMessage = nil
+        
+        // Reset to default variables
+        self.lobbyTitle = ""
+        self.occasionType = "Birthday"
+        self.minimumBudget = 500
+        self.predefinedName = ""
+        self.predefinedLat = nil
+        self.predefinedLng = nil
+        self.searchCompleter.searchQuery = ""
+        self.isTicketSubmitted = false
+        
+        // Generate Lobby Code
+        generateLobbyCode()
+    }
+
     // MARK: - API Action: Clear Lobby
     func clearLobby() async {
         guard let url = URL(string: "\(baseURL)/clear") else { return }
@@ -97,19 +136,7 @@ class LobbyViewModel: ObservableObject {
         
         do {
             let (_, _) = try await URLSession.shared.data(for: request)
-            self.activePlayers = []
-            self.recommendations = nil
-            self.errorMessage = nil
-            
-            // Reset to default variables
-            self.lobbyTitle = ""
-            self.occasionType = "Birthday"
-            self.minimumBudget = 500
-            self.predefinedName = ""
-            self.predefinedLat = nil
-            self.predefinedLng = nil
-            self.searchCompleter.searchQuery = ""
-            
+            resetLobbyState()
             self.path = []
         } catch {
             self.errorMessage = "Failed to clear lobby: \(error.localizedDescription)"

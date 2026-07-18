@@ -559,65 +559,7 @@ struct LobbySetupView: View {
                                     }
                                     .padding(.horizontal, 20)
                                 } else {
-                                    // STEP 4: THE FULLY PRINTED DINNER TICKET
-                                    VStack(alignment: .leading, spacing: 20) {
-                                        // Top branding line
-                                        HStack {
-                                            Text("VIBEAT DINING PASS")
-                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                                .foregroundColor(.carbonInk.opacity(0.4))
-                                                .tracking(2)
-                                            Spacer()
-                                            Image("clochey_reveal")
-                                                .resizable()
-                                                .frame(width: 32, height: 32)
-                                                .shadow(color: .black.opacity(0.1), radius: 2)
-                                        }
-                                        
-                                        // Gathering Name (Bold Serif Print)
-                                        Text(viewModel.lobbyTitle.uppercased())
-                                            .font(.custom("Georgia-Bold", size: 28))
-                                            .foregroundColor(.carbonInk)
-                                            .lineLimit(2)
-                                            .padding(.vertical, 4)
-                                        
-                                        // Typewriter Details
-                                        VStack(alignment: .leading, spacing: 10) {
-                                            Text("OCCASION: \(viewModel.occasionType.uppercased())")
-                                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                                .foregroundColor(.carbonInk.opacity(0.7))
-                                            
-                                            Text("DATE: \(formattedDate.uppercased())")
-                                                .font(.system(size: 12, design: .monospaced))
-                                                .foregroundColor(.carbonInk.opacity(0.7))
-                                            
-                                            Text("TIME: \(formattedTime.uppercased())")
-                                                .font(.system(size: 12, design: .monospaced))
-                                                .foregroundColor(.carbonInk.opacity(0.7))
-                                            
-                                            Text("BUDGET FLOOR: INR \(Int(viewModel.minimumBudget))")
-                                                .font(.system(size: 12, design: .monospaced))
-                                                .foregroundColor(.carbonInk.opacity(0.7))
-                                            
-                                            Text("DESTINATION: \(viewModel.predefinedName.isEmpty ? "MEET HALFWAY" : viewModel.predefinedName.uppercased())")
-                                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                                .foregroundColor(.terracottaOrange)
-                                        }
-                                        
-                                        // Faded Stamp Background Overlay
-                                        HStack {
-                                            Spacer()
-                                            Image(occasions.first(where: { $0.0 == viewModel.occasionType })?.1 ?? "stamp_airmail_invite")
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fit)
-                                                .frame(width: 80, height: 80)
-                                                .opacity(0.2)
-                                                .rotationEffect(.degrees(15))
-                                        }
-                                        .padding(.top, -10)
-                                    }
-                                    .padding(.horizontal, 24)
-                                    .padding(.top, 36)
+                                    editorialTicket(geo: cardGeo)
                                 }
                             }
                             .frame(height: cardGeo.size.height * 0.70, alignment: .top)
@@ -651,30 +593,43 @@ struct LobbySetupView: View {
                                     .disabled(!isStepValid())
                                     .padding(.horizontal, 24)
                                 } else {
-                                    // Step 4: Red Wax Seal Stamp
-                                    Image("ui_wax_seal_red")
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 90, height: 90)
-                                        .shadow(color: .black.opacity(0.35), radius: 5, x: 0, y: 4)
-                                        .scaleEffect(isSealStamped ? 1.0 : 4.0)
-                                        .opacity(isSealStamped ? 1.0 : 0.0)
-                                        .onAppear {
-                                            withAnimation(.spring(response: 0.6, dampingFraction: 0.5)) {
-                                                isSealStamped = true
-                                            }
-                                            UINotificationFeedbackGenerator().notificationOccurred(.success)
-                                            
-                                            // Automatically navigate to active lobby
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-                                                Task {
-                                                    await viewModel.updateSettings()
-                                                    withAnimation(.spring()) {
-                                                        viewModel.path.append(.lobby)
-                                                    }
-                                                }
+                                    // Step 4: CREATE LOBBY button
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        Task {
+                                            await viewModel.updateSettings()
+                                            let hostPlayer = Player(
+                                                name: "Host (You)",
+                                                lat: 28.6139,
+                                                lng: 77.2090,
+                                                budget: viewModel.minimumBudget,
+                                                cuisines: ["Italian"],
+                                                cards: ["HDFC"],
+                                                wantsAlcohol: true,
+                                                atmosphere: "lively",
+                                                specificDish: nil,
+                                                isReady: true
+                                            )
+                                            viewModel.activePlayers.append(hostPlayer)
+                                            viewModel.isTicketSubmitted = true
+                                            withAnimation(.spring()) {
+                                                viewModel.path.append(.lobby)
                                             }
                                         }
+                                    }) {
+                                        Text("CREATE LOBBY")
+                                            .font(.uiLabel(size: 14, weight: .black))
+                                            .foregroundColor(.inkPaper)
+                                            .tracking(1.5)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 15)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.terracottaOrange)
+                                            )
+                                            .shadow(color: Color.terracottaOrange.opacity(0.4), radius: 6, x: 0, y: 4)
+                                    }
+                                    .padding(.horizontal, 24)
                                 }
                                 
                                 Spacer()
@@ -759,6 +714,90 @@ struct LobbySetupView: View {
             return "clochey_host"
         default:
             return "clochey_welcome"
+        }
+    }
+
+    // ── Fully printed editorial ticket (Step 4 upper area) ──────────
+    @ViewBuilder
+    private func editorialTicket(geo: GeometryProxy) -> some View {
+        let cardW = geo.size.width
+        let cardH = geo.size.height
+
+        VStack(alignment: .leading, spacing: 0) {
+
+            // Header row
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("VIBEAT")
+                        .font(.system(size: cardW * 0.055, weight: .black, design: .rounded))
+                        .foregroundColor(.terracottaOrange)
+                        .tracking(4)
+                    Text("DINING PASS")
+                        .font(.system(size: cardW * 0.030, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.carbonInk.opacity(0.35))
+                        .tracking(3)
+                }
+                Spacer()
+                Image("clochey_host")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: cardW * 0.22)
+            }
+            .padding(.horizontal, cardW * 0.07)
+            .padding(.top, cardH * 0.04)
+
+            // Thin separator
+            Rectangle()
+                .fill(Color.carbonInk.opacity(0.12))
+                .frame(height: 1)
+                .padding(.horizontal, cardW * 0.07)
+                .padding(.vertical, cardH * 0.025)
+
+            // Large serif headline
+            Text(viewModel.lobbyTitle.uppercased())
+                .font(.custom("Georgia-Bold", size: cardW * 0.115))
+                .foregroundColor(.carbonInk)
+                .lineLimit(2)
+                .minimumScaleFactor(0.6)
+                .padding(.horizontal, cardW * 0.07)
+
+            // Orange + grey accent rule
+            HStack(spacing: 4) {
+                Rectangle().fill(Color.terracottaOrange).frame(width: cardW * 0.10, height: 3)
+                Rectangle().fill(Color.carbonInk.opacity(0.10)).frame(height: 1)
+            }
+            .padding(.horizontal, cardW * 0.07)
+            .padding(.vertical, cardH * 0.022)
+
+            // Detail rows (spaced out more to fill empty space nicely)
+            VStack(alignment: .leading, spacing: cardH * 0.035) {
+                ticketRow(label: "OCCASION", value: viewModel.occasionType, cardW: cardW, accent: false)
+                ticketRow(label: "DATE", value: formattedDate, cardW: cardW, accent: false)
+                ticketRow(label: "TIME", value: formattedTime, cardW: cardW, accent: false)
+                ticketRow(label: "BUDGET", value: "INR \(Int(viewModel.minimumBudget))+ per head", cardW: cardW, accent: false)
+                ticketRow(label: "DESTINATION",
+                          value: viewModel.predefinedName.isEmpty ? "Meet Halfway" : viewModel.predefinedName,
+                          cardW: cardW, accent: true)
+            }
+            .padding(.horizontal, cardW * 0.07)
+
+            Spacer()
+        }
+    }
+
+    // ── Ticket detail row: label + value ────────────────────────────
+    @ViewBuilder
+    private func ticketRow(label: String, value: String, cardW: CGFloat, accent: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(size: cardW * 0.030, weight: .bold, design: .monospaced))
+                .foregroundColor(.carbonInk.opacity(0.4))
+                .tracking(2.5)
+            Text(value.uppercased())
+                .font(.system(size: cardW * 0.046, weight: accent ? .black : .bold, design: .monospaced))
+                .foregroundColor(accent ? .terracottaOrange : .carbonInk)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
         }
     }
 }

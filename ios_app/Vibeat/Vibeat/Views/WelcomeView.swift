@@ -4,7 +4,6 @@ struct WelcomeView: View {
     @ObservedObject var viewModel: LobbyViewModel
     @State private var showingCodeInput = false
     @State private var lobbyCode = ""
-    
     var body: some View {
         VStack(spacing: 30) {
             Spacer()
@@ -15,11 +14,10 @@ struct WelcomeView: View {
             
             // Host Button (Native style)
             Button(action: {
-                Task {
-                    await viewModel.clearLobby() // Clear any stale backend states
-                    withAnimation {
-                        viewModel.path.append(.hostSetup)
-                    }
+                viewModel.resetLobbyState()
+                viewModel.isHost = true
+                withAnimation {
+                    viewModel.path.append(.hostSetup)
                 }
             }) {
                 Text("Host a Lobby")
@@ -54,6 +52,13 @@ struct WelcomeView: View {
                         }
                     
                     Button("Enter Dining Table") {
+                        viewModel.isHost = false
+                        viewModel.lobbyCode = lobbyCode
+                        viewModel.activePlayers = [
+                            Player(name: "Rohan", lat: 28.6139, lng: 77.2090, budget: 800, cuisines: ["Italian"], cards: ["HDFC"], wantsAlcohol: true, atmosphere: "lively", specificDish: nil, isReady: true),
+                            Player(name: "Sneha", lat: 28.6139, lng: 77.2090, budget: 1500, cuisines: ["Chinese", "Asian"], cards: ["SBI"], wantsAlcohol: false, atmosphere: "cozy", specificDish: nil, isReady: false),
+                            Player(name: "Kabir", lat: 28.6139, lng: 77.2090, budget: 1200, cuisines: ["Continental"], cards: ["AXIS"], wantsAlcohol: true, atmosphere: "romantic", specificDish: nil, isReady: true)
+                        ]
                         withAnimation {
                             viewModel.path.append(.lobby)
                         }
@@ -73,6 +78,7 @@ struct WelcomeView: View {
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
