@@ -9,6 +9,9 @@ import AuthenticationServices
 import SwiftUI
 
 struct LoginView: View {
+    
+    @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
+
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @Environment(\.dismiss) private var dismiss
@@ -98,6 +101,7 @@ struct LoginView: View {
 
             do {
                 try await VibeatAPIClient.shared.login(idToken: idToken)
+                isLoggedIn = true
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
