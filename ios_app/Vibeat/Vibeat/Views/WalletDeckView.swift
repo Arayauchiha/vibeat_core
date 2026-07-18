@@ -41,7 +41,7 @@ struct WalletDeckView: View {
                     HStack {
                         Button(action: {
                             Task {
-                                await viewModel.clearLobby()
+                                
                             }
                         }) {
                             Text("Reset Table")
@@ -218,7 +218,6 @@ struct WalletDeckView: View {
                                     specificDish: nil
                                 )
                                 Task {
-                                    await viewModel.addPlayer(player)
                                     withAnimation(.spring()) {
                                         viewModel.isTicketSubmitted = true
                                     }
@@ -305,7 +304,7 @@ struct WalletDeckView: View {
                         
                         // Dynamic concentric orbits
                         OrbitLobbyView(players: viewModel.activePlayers) { name in
-                            viewModel.togglePlayerReady(name: name)
+                            
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         }
                         .padding(.vertical, 10)
@@ -320,7 +319,7 @@ struct WalletDeckView: View {
                                 let allReady = viewModel.activePlayers.allSatisfy { $0.isReady }
                                 if allReady {
                                     Task {
-                                        await viewModel.calculateRecommendations()
+                                        
                                     }
                                 } else {
                                     showingStartAlert = true
@@ -344,7 +343,7 @@ struct WalletDeckView: View {
                                 Button("Wait", role: .cancel) { }
                                 Button("Start Anyway", role: .destructive) {
                                     Task {
-                                        await viewModel.calculateRecommendations()
+                                        
                                     }
                                 }
                             } message: {
@@ -354,7 +353,7 @@ struct WalletDeckView: View {
                             // Guest ready toggle
                             let myReadyState = viewModel.activePlayers.first(where: { $0.name == playerName })?.isReady ?? false
                             Button(action: {
-                                viewModel.togglePlayerReady(name: playerName)
+                                
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             }) {
                                 Text(myReadyState ? "READY TO START ✓" : "MARK READY TO DECIDE 🍽️")

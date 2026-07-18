@@ -597,7 +597,7 @@ struct LobbySetupView: View {
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                         Task {
-                                            await viewModel.updateSettings()
+                                            
                                             let hostPlayer = Player(
                                                 name: "Host (You)",
                                                 lat: 28.6139,

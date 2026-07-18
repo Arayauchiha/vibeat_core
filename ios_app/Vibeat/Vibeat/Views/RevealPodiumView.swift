@@ -37,7 +37,7 @@ struct RevealPodiumView: View {
                         // Close/Reset Button
                         Button(action: {
                             Task {
-                                await viewModel.clearLobby()
+                                
                             }
                         }) {
                             Image(systemName: "xmark")
@@ -158,7 +158,7 @@ struct RevealPodiumView: View {
                     // Reset Button at bottom
                     Button(action: {
                         Task {
-                            await viewModel.clearLobby()
+                            
                         }
                     }) {
                         Text("Start a New Table")
