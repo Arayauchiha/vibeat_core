@@ -7,19 +7,19 @@ struct RevealPodiumView: View {
     var body: some View {
         ZStack {
             // Tabletop Linen Backdrop
-            Image("texture_linen_table")
+            SwiftUI.Image("texture_linen_table")
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .edgesIgnoringSafeArea(.all)
             
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: true) {
                 VStack(spacing: 24) {
                     // Header
                     HStack {
                         Button(action: {
-                            withAnimation(.spring()) {
+                           
                                 viewModel.path.removeLast()
-                            }
+                            
                         }) {
                             Image(systemName: "arrow.left")
                                 .font(.system(size: 16, weight: .bold))
@@ -49,7 +49,7 @@ struct RevealPodiumView: View {
                     .padding(.top, 10)
                     
                     // Reveal Mascot
-                    Image("clochey_reveal")
+                    SwiftUI.Image("clochey_reveal")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(height: 120)
@@ -120,7 +120,7 @@ struct RevealPodiumView: View {
                                 ForEach(recommendations.disqualifiedVenues) { venue in
                                     HStack(alignment: .top, spacing: 12) {
                                         // Red disqualified stamp
-                                        Image("stamp_disqualified")
+                                        SwiftUI.Image("stamp_disqualified")
                                             .resizable()
                                             .aspectRatio(contentMode: .fit)
                                             .frame(width: 44, height: 44)
@@ -145,7 +145,7 @@ struct RevealPodiumView: View {
                     } else {
                         // Empty State if no data parsed
                         VStack(spacing: 16) {
-                            Image("clochey_empty")
+                            SwiftUI.Image("clochey_empty")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(height: 120)
@@ -227,7 +227,7 @@ struct PodiumTicketView: View {
                 
                 // Ink Stamp Overlay (If awarded tag exists)
                 if let stamp = restaurant.awardTag {
-                    Image(getStampImageName(stamp))
+                    SwiftUI.Image(getStampImageName(stamp))
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 75, height: 75)
@@ -326,3 +326,4 @@ struct PodiumTicketView: View {
 #Preview {
     RevealPodiumView(viewModel: LobbyViewModel())
 }
+
