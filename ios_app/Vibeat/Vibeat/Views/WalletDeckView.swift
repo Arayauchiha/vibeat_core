@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct WalletDeckView: View {
     @ObservedObject var viewModel: LobbyViewModel
@@ -15,60 +16,68 @@ struct WalletDeckView: View {
     @State private var selectedCards: [String] = []
     @State private var cardOffsets: [String: CGSize] = [:]
     
-    // Toggle between Ticket Entry and the Dining Table list
-    @State private var isTicketSubmitted = false
+    // Orbit Lobby animations and alerts
+    @State private var showingStartAlert = false
+    @State private var copiedCode = false
     
     let cuisinesList = ["Italian", "Chinese", "Continental", "Asian", "North Indian", "South Indian"]
     
     var body: some View {
         ZStack {
-            // Tabletop Linen Backdrop
-            Image("texture_linen_table")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .edgesIgnoringSafeArea(.all)
+            // Tabletop Backdrop
+            if viewModel.isTicketSubmitted {
+                Color.inkPaper
+                    .edgesIgnoringSafeArea(.all)
+            } else {
+                Image("texture_linen_table")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .edgesIgnoringSafeArea(.all)
+            }
             
             VStack {
-                // Header
-                HStack {
-                    Button(action: {
-                        Task {
-                            await viewModel.clearLobby()
+                // Header (Only show in Mode 1: Ticket Entry)
+                if !viewModel.isTicketSubmitted {
+                    HStack {
+                        Button(action: {
+                            Task {
+                                await viewModel.clearLobby()
+                            }
+                        }) {
+                            Text("Reset Table")
+                                .font(.uiLabel(size: 14, weight: .bold))
+                                .foregroundColor(.terracottaOrange)
                         }
-                    }) {
-                        Text("Reset Table")
-                            .font(.uiLabel(size: 14, weight: .bold))
-                            .foregroundColor(.terracottaOrange)
-                    }
-                    
-                    Spacer()
-                    
-                    Text(isTicketSubmitted ? "Vibeat Dining Table" : "Fill Your Plate")
-                        .font(.editorialSubheader(size: 20))
-                        .foregroundColor(.inkPaper)
-                    
-                    Spacer()
-                    
-                    // Share Postmark Button (Circular stamp icon)
-                    Button(action: {
-                        let text = "Join my Vibeat Dining Table! Let's match: https://vibeat-backend-jn0q.onrender.com"
-                        let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                           let rootVC = windowScene.windows.first?.rootViewController {
-                            rootVC.present(av, animated: true, completion: nil)
+                        
+                        Spacer()
+                        
+                        Text("Fill Your Plate")
+                            .font(.editorialSubheader(size: 20))
+                            .foregroundColor(.inkPaper)
+                        
+                        Spacer()
+                        
+                        // Share Postmark Button (Circular stamp icon)
+                        Button(action: {
+                            let text = "Join my Vibeat Dining Table! Let's match: https://vibeat-backend-jn0q.onrender.com"
+                            let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+                            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                               let rootVC = windowScene.windows.first?.rootViewController {
+                                rootVC.present(av, animated: true, completion: nil)
+                            }
+                        }) {
+                            Image("stamp_airmail_invite")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 44, height: 44)
+                                .clipShape(Circle())
                         }
-                    }) {
-                        Image("stamp_airmail_invite")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 44, height: 44)
-                            .clipShape(Circle())
                     }
+                    .padding(.horizontal)
+                    .padding(.top, 10)
                 }
-                .padding(.horizontal)
-                .padding(.top, 10)
                 
-                if !isTicketSubmitted {
+                if !viewModel.isTicketSubmitted {
                     // MODE 1: Fill out your entrance ticket
                     ScrollView {
                         VStack(spacing: 20) {
@@ -211,7 +220,7 @@ struct WalletDeckView: View {
                                 Task {
                                     await viewModel.addPlayer(player)
                                     withAnimation(.spring()) {
-                                        isTicketSubmitted = true
+                                        viewModel.isTicketSubmitted = true
                                     }
                                 }
                             }) {
@@ -230,72 +239,139 @@ struct WalletDeckView: View {
                         }
                     }
                 } else {
-                    // MODE 2: Staging Lobby / Dining Table Active List
-                    VStack(spacing: 24) {
+                    // MODE 2: Staging Orbit Lobby
+                    VStack(spacing: 0) {
+                        // Small spacer to push title below status bar
                         Spacer()
+                            .frame(height: 15)
                         
-                        // Active Table list
-                        VStack(spacing: 16) {
-                            Text("ACTIVE GUESTS")
-                                .font(.uiLabel(size: 13, weight: .bold))
-                                .foregroundColor(.terracottaOrange)
-                                .tracking(2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                        // Lobby Info Header
+                        VStack(spacing: 12) {
+                            Text(viewModel.lobbyTitle.isEmpty ? "VIBEAT" : viewModel.lobbyTitle.uppercased())
+                                .font(.custom("Georgia-Bold", size: 36))
+                                .foregroundColor(.carbonInk)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
                             
-                            ScrollView {
-                                ForEach(viewModel.activePlayers) { player in
-                                    HStack {
-                                        Image(systemName: "person.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(.carbonInk.opacity(0.4))
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(player.name)
-                                                .font(.uiLabel(size: 15, weight: .bold))
-                                                .foregroundColor(.carbonInk)
-                                            Text("Limit: ₹\(Int(player.budget)) • Cards: \(player.cards.joined(separator: ", "))")
-                                                .font(.uiLabel(size: 11))
-                                                .foregroundColor(.carbonInk.opacity(0.6))
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Image(systemName: "checkmark.seal.fill")
-                                            .foregroundColor(.budgetStamp)
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    UIPasteboard.general.string = viewModel.lobbyCode.isEmpty ? "847293" : viewModel.lobbyCode
+                                    copiedCode = true
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                        copiedCode = false
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "doc.on.doc.fill")
+                                            .font(.caption2)
+                                        Text(copiedCode ? "COPIED! ✓" : "CODE: \(viewModel.lobbyCode.isEmpty ? "847293" : viewModel.lobbyCode)")
+                                            .font(.system(size: 13, weight: .bold, design: .monospaced))
                                     }
                                     .padding(.vertical, 8)
-                                    Divider().background(Color.subtleDottedLine)
+                                    .padding(.horizontal, 14)
+                                    .background(Color.carbonInk.opacity(0.08))
+                                    .cornerRadius(20)
+                                    .foregroundColor(.carbonInk)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .stroke(Color.carbonInk.opacity(0.15), lineWidth: 1)
+                                    )
+                                }
+                                
+                                Button(action: {
+                                    let inviteLink = "Join my Vibeat Dining Table! Let's match: https://vibeat-backend-jn0q.onrender.com/\(viewModel.lobbyCode)"
+                                    let av = UIActivityViewController(activityItems: [inviteLink], applicationActivities: nil)
+                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let rootVC = windowScene.windows.first?.rootViewController {
+                                        rootVC.present(av, animated: true, completion: nil)
+                                    }
+                                }) {
+                                    Image(systemName: "square.and.arrow.up")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .padding(10)
+                                        .background(Color.carbonInk.opacity(0.08))
+                                        .clipShape(Circle())
+                                        .foregroundColor(.carbonInk)
+                                        .overlay(
+                                            Circle().stroke(Color.carbonInk.opacity(0.15), lineWidth: 1)
+                                        )
                                 }
                             }
-                            .frame(height: 220)
                         }
-                        .padding(24)
-                        .ticketStubStyle()
-                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
                         
                         Spacer()
                         
-                        // Compute Vibe & Match (Represented by Red Wax Seal!)
-                        VStack(spacing: 8) {
+                        // Dynamic concentric orbits
+                        OrbitLobbyView(players: viewModel.activePlayers) { name in
+                            viewModel.togglePlayerReady(name: name)
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        }
+                        .padding(.vertical, 10)
+                        
+                        Spacer()
+                        
+                        // Action Buttons Area
+                        if viewModel.isHost {
+                            // Host Start Matching button
                             Button(action: {
-                                Task {
-                                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                                    await viewModel.calculateRecommendations()
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                let allReady = viewModel.activePlayers.allSatisfy { $0.isReady }
+                                if allReady {
+                                    Task {
+                                        await viewModel.calculateRecommendations()
+                                    }
+                                } else {
+                                    showingStartAlert = true
                                 }
                             }) {
-                                Image("ui_wax_seal_red")
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 100, height: 100)
-                                    .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 5)
+                                Text("START MATCHING 🍽️")
+                                    .font(.uiLabel(size: 14, weight: .black))
+                                    .foregroundColor(.inkPaper)
+                                    .tracking(1.5)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 15)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.terracottaOrange)
+                                    )
+                                    .shadow(color: Color.terracottaOrange.opacity(0.4), radius: 6, x: 0, y: 4)
                             }
-                            
-                            Text("SEAL LOBBY & COMPUTE")
-                                .font(.uiLabel(size: 12, weight: .black))
-                                .foregroundColor(.inkPaper)
-                                .tracking(1)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 36)
+                            .alert("Not Everyone is Ready", isPresented: $showingStartAlert) {
+                                Button("Wait", role: .cancel) { }
+                                Button("Start Anyway", role: .destructive) {
+                                    Task {
+                                        await viewModel.calculateRecommendations()
+                                    }
+                                }
+                            } message: {
+                                Text("Some diners haven't marked themselves as ready. Do you want to start preference matching anyway?")
+                            }
+                        } else {
+                            // Guest ready toggle
+                            let myReadyState = viewModel.activePlayers.first(where: { $0.name == playerName })?.isReady ?? false
+                            Button(action: {
+                                viewModel.togglePlayerReady(name: playerName)
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            }) {
+                                Text(myReadyState ? "READY TO START ✓" : "MARK READY TO DECIDE 🍽️")
+                                    .font(.uiLabel(size: 14, weight: .black))
+                                    .foregroundColor(myReadyState ? .white : .inkPaper)
+                                    .tracking(1.5)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 15)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(myReadyState ? Color.green : Color.terracottaOrange)
+                                    )
+                                    .shadow(color: (myReadyState ? Color.green : Color.terracottaOrange).opacity(0.3), radius: 6, x: 0, y: 4)
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 36)
                         }
-                        .padding(.bottom, 40)
                     }
                 }
             }
@@ -391,5 +467,147 @@ struct FlowLayout: View {
             }
         }
         .frame(minHeight: 80) // Restrict layout size
+    }
+}
+
+// MARK: - Dynamic Concentric Orbit View
+struct OrbitLobbyView: View {
+    let players: [Player]
+    let onPlayerTap: (String) -> Void
+    
+    private let orbitColors: [Color] = [
+        Color(red: 254/255, green: 110/255, blue: 23/255),
+        Color(red: 255/255, green: 55/255,  blue: 95/255),
+        Color(red: 155/255, green: 89/255,  blue: 182/255),
+        Color(red: 46/255,  green: 204/255, blue: 113/255),
+        Color(red: 52/255,  green: 152/255, blue: 219/255),
+        Color(red: 241/255, green: 196/255, blue: 15/255),
+        Color(red: 231/255, green: 76/255,  blue: 60/255)
+    ]
+    
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate * 0.35
+            let memberCount = players.count
+            let ringRadii: [CGFloat] = [80, 130, 170]
+            
+            ZStack {
+                // Concentric rings
+                ForEach(0..<3, id: \.self) { ring in
+                    let diameter = ringRadii[ring] * 2
+                    Circle()
+                        .stroke(Color.carbonInk.opacity(Double(ring + 1) * 0.04), lineWidth: 1.2)
+                        .frame(width: diameter, height: diameter)
+                }
+                
+                // Center hub — the vibeat logo
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.carbonInk)
+                    .frame(width: 68, height: 68)
+                    .overlay(
+                        Text("vb")
+                            .font(.system(size: 26, weight: .bold, design: .serif))
+                            .foregroundColor(Color.inkPaper)
+                    )
+                
+                // Orbiting players
+                if memberCount == 0 {
+                    // Solo — just "You" on inner ring
+                    MemberOrb(initials: "You", color: orbitColors[0], size: 48, isReady: true)
+                        .offset(
+                            x: ringRadii[0] * cos(t),
+                            y: ringRadii[0] * sin(t)
+                        )
+                } else {
+                    ForEach(Array(players.enumerated()), id: \.element.id) { index, player in
+                        let ringIndex: Int = {
+                            if memberCount <= 4 {
+                                return 0
+                            } else if memberCount <= 8 {
+                                return index < 4 ? 0 : 1
+                            } else {
+                                if index < 4 { return 0 }
+                                else if index < 8 { return 1 }
+                                else { return 2 }
+                            }
+                        }()
+                        
+                        let distance = ringRadii[ringIndex]
+                        
+                        let membersOnSameRing: Int = {
+                            if memberCount <= 4 {
+                                return memberCount
+                            } else if memberCount <= 8 {
+                                return ringIndex == 0 ? 4 : memberCount - 4
+                            } else {
+                                if ringIndex == 0 { return 4 }
+                                else if ringIndex == 1 { return min(4, memberCount - 4) }
+                                else { return memberCount - 8 }
+                            }
+                        }()
+                        
+                        let indexOnRing: Int = {
+                            if memberCount <= 4 {
+                                return index
+                            } else if memberCount <= 8 {
+                                return ringIndex == 0 ? index : index - 4
+                            } else {
+                                if ringIndex == 0 { return index }
+                                else if ringIndex == 1 { return index - 4 }
+                                else { return index - 8 }
+                            }
+                        }()
+                        
+                        let speed: Double = ringIndex == 0 ? 1.0 : (ringIndex == 1 ? 0.7 : 0.5)
+                        let angle = Double(indexOnRing) * (2 * .pi / Double(max(1, membersOnSameRing))) + (t * speed)
+                        let orbSize: CGFloat = ringIndex == 0 ? 48 : (ringIndex == 1 ? 42 : 38)
+                        
+                        Button(action: {
+                            onPlayerTap(player.name)
+                        }) {
+                            MemberOrb(
+                                initials: String(player.name.prefix(2)).uppercased(),
+                                color: orbitColors[index % orbitColors.count],
+                                size: orbSize,
+                                isReady: player.isReady
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .offset(
+                            x: distance * cos(angle),
+                            y: distance * sin(angle)
+                        )
+                    }
+                }
+            }
+            .frame(width: 360, height: 360)
+        }
+    }
+}
+
+// MARK: - MemberOrb
+struct MemberOrb: View {
+    let initials: String
+    let color: Color
+    let size: CGFloat
+    let isReady: Bool
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color)
+                .frame(width: size, height: size)
+            
+            if isReady {
+                Circle()
+                    .stroke(Color.green, lineWidth: 3)
+                    .frame(width: size, height: size)
+                    .shadow(color: .green.opacity(0.6), radius: 4)
+            }
+            
+            Text(initials)
+                .font(.system(size: size * 0.28, weight: .bold))
+                .foregroundColor(.white)
+        }
     }
 }
