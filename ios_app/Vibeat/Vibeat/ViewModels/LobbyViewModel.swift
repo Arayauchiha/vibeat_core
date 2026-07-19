@@ -44,7 +44,7 @@ class LobbyViewModel: ObservableObject {
     
     // UI State
     @Published var path: [AppScreen] = []
-    @Published var activePlayers: [Player] = []
+    @Published var activePlayers: [User] = []
     @Published var recommendations: VibeatResponse?
     @Published var errorMessage: String? = nil
     @Published var isTicketSubmitted: Bool = false
@@ -62,10 +62,43 @@ class LobbyViewModel: ObservableObject {
     @Published var predefinedLat: Double? = nil
     @Published var predefinedLng: Double? = nil
     
-    // MapKit Autocomplete Search Engine
     @Published var searchCompleter = LocationSearchService()
     
-    // MARK: - Geocode MapKit Selection
+    private var pollingTask: Task<Void, Never>?
+
+    func startPollingPlayers() {
+        pollingTask?.cancel()
+
+        pollingTask = Task {
+            while !Task.isCancelled {
+                await fetchPlayersForLobby()
+
+                do {
+                    try await Task.sleep(for: .seconds(2))
+                } catch {
+                    break
+                }
+            }
+        }
+    }
+    
+    deinit {
+        pollingTask?.cancel()
+    }
+
+    func stopPollingPlayers() {
+        pollingTask?.cancel()
+        pollingTask = nil
+    }
+    
+    func fetchPlayersForLobby() async {
+        if !lobbyCode.isEmpty, let users = try? await VibeatAPIClient.shared.getLobbyUsers(lobbyCode: lobbyCode) {
+            await MainActor.run {
+                self.activePlayers = users
+            }
+        }
+    }
+
     func selectLocation(_ completion: MKLocalSearchCompletion) async {
         self.predefinedName = completion.title
         

@@ -54,11 +54,6 @@ struct WelcomeView: View {
                     Button("Enter Dining Table") {
                         viewModel.isHost = false
                         viewModel.lobbyCode = lobbyCode
-                        viewModel.activePlayers = [
-                            Player(name: "Rohan", lat: 28.6139, lng: 77.2090, budget: 800, cuisines: ["Italian"], cards: ["HDFC"], wantsAlcohol: true, atmosphere: "lively", specificDish: nil, isReady: true),
-                            Player(name: "Sneha", lat: 28.6139, lng: 77.2090, budget: 1500, cuisines: ["Chinese", "Asian"], cards: ["SBI"], wantsAlcohol: false, atmosphere: "cozy", specificDish: nil, isReady: false),
-                            Player(name: "Kabir", lat: 28.6139, lng: 77.2090, budget: 1200, cuisines: ["Continental"], cards: ["AXIS"], wantsAlcohol: true, atmosphere: "romantic", specificDish: nil, isReady: true)
-                        ]
                         withAnimation {
                             viewModel.path.append(.lobby)
                         }

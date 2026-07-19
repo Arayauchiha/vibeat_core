@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @AppStorage("isLoggedIn") var isLoggedIn: Bool = true
+    @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
 
     @StateObject private var viewModel = LobbyViewModel()
     

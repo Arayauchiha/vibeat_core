@@ -218,8 +218,6 @@ struct LocationPickerSheet: View {
         }
     }
 
-    // ── Helpers ────────────────────────────────────────────────────
-
     private func selectResult(_ completion: MKLocalSearchCompletion) async {
         let request = MKLocalSearch.Request(completion: completion)
         let search = MKLocalSearch(request: request)
@@ -563,15 +561,11 @@ struct LobbySetupView: View {
                                 }
                             }
                             .frame(height: cardGeo.size.height * 0.70, alignment: .top)
-                            
-                            // ==========================================
-                            // LOWER TICKET AREA (Exactly 30% of Card Height)
-                            // ==========================================
+
                             VStack {
                                 Spacer()
                                 
                                 if currentStep < 4 {
-                                    // Setup Action Button (Styled as "NEXT" / "CREATE TABLE")
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                         withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
@@ -593,25 +587,14 @@ struct LobbySetupView: View {
                                     .disabled(!isStepValid())
                                     .padding(.horizontal, 24)
                                 } else {
-                                    // Step 4: CREATE LOBBY button
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                         Task {
-                                            
-                                            let hostPlayer = Player(
-                                                name: "Host (You)",
-                                                lat: 28.6139,
-                                                lng: 77.2090,
-                                                budget: viewModel.minimumBudget,
-                                                cuisines: ["Italian"],
-                                                cards: ["HDFC"],
-                                                wantsAlcohol: true,
-                                                atmosphere: "lively",
-                                                specificDish: nil,
-                                                isReady: true
-                                            )
-                                            viewModel.activePlayers.append(hostPlayer)
-                                            viewModel.isTicketSubmitted = true
+                                            let payload = LobbyCreateRequest(name: viewModel.lobbyTitle, type: .casual, eventAt: dinnerDate, minimumBudget: viewModel.minimumBudget, eventLocation: .init(longitute: viewModel.predefinedLng ?? 0, latitude: viewModel.predefinedLat ?? 0))
+                                            let response = try? await VibeatAPIClient.shared.createLobby(payload)
+                                            viewModel.lobbyCode = response?.lobbyCode ?? ""
+
+                                            viewModel.isTicketSubmitted = false
                                             withAnimation(.spring()) {
                                                 viewModel.path.append(.lobby)
                                             }
@@ -640,7 +623,7 @@ struct LobbySetupView: View {
                     }
                 }
                 .ticketStubStyle(cutoutRatio: 0.70, cutoutRadius: 10)
-                .frame(height: UIScreen.main.bounds.height * 0.74) // Tall ticket aspect ratio
+                .frame(height: UIScreen.main.bounds.height * 0.74)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 32)
                 
@@ -661,7 +644,6 @@ struct LobbySetupView: View {
                             currentStep -= 1
                         }
                     } else {
-                        // Pop from NavigationStack path
                         withAnimation {
                             _ = viewModel.path.popLast()
                         }

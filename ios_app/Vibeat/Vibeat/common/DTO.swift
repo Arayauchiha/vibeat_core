@@ -78,6 +78,9 @@ struct UserPreference: Codable, Sendable {
         case vibe
         case foodPreference = "food_preference"
         case alcoholPreference = "alcohol_preference"
+        case cards
+        case latitute
+        case longitude
     }
 
     var budget: Double = 500
@@ -86,6 +89,9 @@ struct UserPreference: Codable, Sendable {
     var vibe: String = ""
     var foodPreference: UserFoodPreference = .veg
     var alcoholPreference: Bool = false
+    var cards: [String] = []
+    var latitute: Double = 28.6139
+    var longitude: Double = 77.2090
 }
 
 struct User: Codable, Sendable {

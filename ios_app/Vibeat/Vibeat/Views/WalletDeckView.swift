@@ -206,17 +206,7 @@ struct WalletDeckView: View {
                             // Toss Ticket Action Button
                             Button(action: {
                                 guard !playerName.isEmpty else { return }
-                                let player = Player(
-                                    name: playerName,
-                                    lat: 28.6139, // Simulated coordinate
-                                    lng: 77.2090,
-                                    budget: budget,
-                                    cuisines: selectedCuisines,
-                                    cards: selectedCards,
-                                    wantsAlcohol: wantsAlcohol,
-                                    atmosphere: selectedAtmosphere,
-                                    specificDish: nil
-                                )
+
                                 Task {
                                     withAnimation(.spring()) {
                                         viewModel.isTicketSubmitted = true
@@ -279,7 +269,7 @@ struct WalletDeckView: View {
                                 }
                                 
                                 Button(action: {
-                                    let inviteLink = "Join my Vibeat Dining Table! Let's match: https://vibeat-backend-jn0q.onrender.com/\(viewModel.lobbyCode)"
+                                    let inviteLink = "Join my Vibeat Dining Table! CODE: \(viewModel.lobbyCode)"
                                     let av = UIActivityViewController(activityItems: [inviteLink], applicationActivities: nil)
                                     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                                        let rootVC = windowScene.windows.first?.rootViewController {
@@ -316,13 +306,8 @@ struct WalletDeckView: View {
                             // Host Start Matching button
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                let allReady = viewModel.activePlayers.allSatisfy { $0.isReady }
-                                if allReady {
-                                    Task {
-                                        
-                                    }
-                                } else {
-                                    showingStartAlert = true
+                                Task {
+                                    
                                 }
                             }) {
                                 Text("START MATCHING 🍽️")
@@ -349,27 +334,6 @@ struct WalletDeckView: View {
                             } message: {
                                 Text("Some diners haven't marked themselves as ready. Do you want to start preference matching anyway?")
                             }
-                        } else {
-                            // Guest ready toggle
-                            let myReadyState = viewModel.activePlayers.first(where: { $0.name == playerName })?.isReady ?? false
-                            Button(action: {
-                                
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            }) {
-                                Text(myReadyState ? "READY TO START ✓" : "MARK READY TO DECIDE 🍽️")
-                                    .font(.uiLabel(size: 14, weight: .black))
-                                    .foregroundColor(myReadyState ? .white : .inkPaper)
-                                    .tracking(1.5)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 15)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(myReadyState ? Color.green : Color.terracottaOrange)
-                                    )
-                                    .shadow(color: (myReadyState ? Color.green : Color.terracottaOrange).opacity(0.3), radius: 6, x: 0, y: 4)
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.bottom, 36)
                         }
                     }
                 }
@@ -471,7 +435,7 @@ struct FlowLayout: View {
 
 // MARK: - Dynamic Concentric Orbit View
 struct OrbitLobbyView: View {
-    let players: [Player]
+    let players: [User]
     let onPlayerTap: (String) -> Void
     
     private let orbitColors: [Color] = [
@@ -562,13 +526,13 @@ struct OrbitLobbyView: View {
                         let orbSize: CGFloat = ringIndex == 0 ? 48 : (ringIndex == 1 ? 42 : 38)
                         
                         Button(action: {
-                            onPlayerTap(player.name)
+                            onPlayerTap(player.fullName)
                         }) {
                             MemberOrb(
-                                initials: String(player.name.prefix(2)).uppercased(),
+                                initials: String(player.fullName.prefix(2)).uppercased(),
                                 color: orbitColors[index % orbitColors.count],
                                 size: orbSize,
-                                isReady: player.isReady
+                                isReady: true
                             )
                         }
                         .buttonStyle(PlainButtonStyle())

@@ -97,6 +97,11 @@ struct JoinSetupView: View {
                         Button(action: {
                             withAnimation(.spring()) {
                                 viewModel.path.append(.lobby)
+                                if inviteCode.count == 6 {
+                                    Task {
+                                        try? await VibeatAPIClient.shared.joinLobby(lobbyCode: inviteCode)
+                                    }
+                                }
                             }
                         }) {
                             HStack {
