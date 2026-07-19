@@ -899,20 +899,7 @@ struct GuestQuizView: View {
                         }
                     } else {
                         // Final submission (Toss Ticket)
-                        let player = Player(
-                            name: playerName,
-                            lat: travelLat,
-                            lng: travelLng,
-                            budget: budget,
-                            cuisines: selectedCuisines,
-                            cards: selectedCards,
-                            wantsAlcohol: wantsAlcohol,
-                            atmosphere: selectedAtmosphere,
-                            specificDish: particularDish.isEmpty ? nil : particularDish,
-                            dietPreference: dietPreference,
-                            isReady: false
-                        )
-                        viewModel.activePlayers.append(player)
+                        
                         viewModel.isTicketSubmitted = true
                         Task {
                             await viewModel.calculateRecommendations()

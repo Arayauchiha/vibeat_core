@@ -93,7 +93,6 @@ struct WalletDeckView: View {
                         
                         // Dynamic concentric orbits
                         OrbitLobbyView(players: viewModel.activePlayers) { name in
-                            viewModel.togglePlayerReady(name: name)
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         }
                         .padding(.vertical, 10)
@@ -134,7 +133,6 @@ struct WalletDeckView: View {
                         } else {
                             let myReadyState = true
                             Button(action: {
-                                viewModel.togglePlayerReady(name: playerName)
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             }) {
                                 Text(myReadyState ? "READY TO START ✓" : "MARK READY TO DECIDE 🍽️")

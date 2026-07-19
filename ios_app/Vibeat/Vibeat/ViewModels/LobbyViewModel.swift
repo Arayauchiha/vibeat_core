@@ -137,13 +137,6 @@ class LobbyViewModel: ObservableObject {
         self.isQuizStarted = false
     }
 
-    func togglePlayerReady(name: String) {
-        if let idx = activePlayers.firstIndex(where: { $0.name == name }) {
-            var updated = activePlayers[idx]
-            updated.isReady.toggle()
-            activePlayers[idx] = updated
-        }
-    }
     
     func clearLobby() async {
         resetLobbyState()
