@@ -45,7 +45,7 @@ class LobbyViewModel: ObservableObject {
     // UI State
     @Published var path: [AppScreen] = []
     @Published var activePlayers: [User] = []
-    @Published var recommendations: VibeatResponse?
+    @Published var recommendations: VenueRecommendationResponse?
     @Published var errorMessage: String? = nil
     @Published var isTicketSubmitted: Bool = false
     @Published var isQuizStarted: Bool = false
@@ -143,7 +143,9 @@ class LobbyViewModel: ObservableObject {
     }
     
     func calculateRecommendations() async {
-        // Transition to podium/results or simulate recommendations
+        // Populate mock recommendations for visual design and testing
+        
+        // Transition to podium/results screen
         self.path.append(.results)
     }
 }
