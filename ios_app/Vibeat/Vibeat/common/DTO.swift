@@ -166,9 +166,3 @@ struct LobbyInviteResponse: Codable, Sendable {
     let detail: String
     let lobbyCode: String
 }
-
-// MARK: - Misc / catch-all empty responses
-
-/// Used for endpoints whose OpenAPI response schema is an empty object (`{}`),
-/// e.g. Swiggy login/callback/search and lobby join.
-struct EmptyResponse: Codable, Sendable {}

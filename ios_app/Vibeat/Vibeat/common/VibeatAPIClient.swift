@@ -111,8 +111,8 @@ actor VibeatAPIClient {
     }
 
     @discardableResult
-    func joinLobby(lobbyCode: String) async throws -> EmptyResponse {
-        let response: NetworkResponse<EmptyResponse> = try await MCNetworkManager.shared.get(
+    func joinLobby(lobbyCode: String) async throws -> Bool {
+        let response: NetworkResponse<Bool> = try await MCNetworkManager.shared.get(
             url: Endpoint.lobbyJoin.urlString(with: lobbyCode),
             headers: authHeaders()
         )
@@ -123,8 +123,8 @@ actor VibeatAPIClient {
     // MARK: - Swiggy / Restaurants
 
     @discardableResult
-    func searchRestaurants(lobbyId: String, query: String, longitude: String, latitude: String) async throws -> EmptyResponse {
-        let response: NetworkResponse<EmptyResponse> = try await MCNetworkManager.shared.post(
+    func searchRestaurants(lobbyId: String, query: String, longitude: String, latitude: String) async throws -> VenueRecommendationResponse {
+        let response: NetworkResponse<VenueRecommendationResponse> = try await MCNetworkManager.shared.post(
             url: Endpoint.restrurantSearch.urlString(with: lobbyId),
             queryParameters: [
                 "query": query,
