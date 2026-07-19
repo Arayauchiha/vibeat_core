@@ -104,7 +104,8 @@ struct WalletDeckView: View {
                             // Host Start Matching button
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
+                                // Trigger the alert that lets the host start the quiz
+                                showingStartAlert = true
                             }) {
                                 Text("START MATCHING 🍽️")
                                     .font(.uiLabel(size: 14, weight: .black))

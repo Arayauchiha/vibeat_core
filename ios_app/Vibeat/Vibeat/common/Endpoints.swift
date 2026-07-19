@@ -8,11 +8,12 @@ enum Endpoint: String, Sendable {
     case delete = "/auth/delete"
     case update = "/update/preference"
     case me = "/auth/me"
+    case userHasPreference = "/lobby/@s/has-preference"
     case lobbyCreate = "/lobby/create"
     case lobbyGetInviteLink = "/lobby/@s/get-invite-link"
     case lobbyUsers = "/lobby/@s/users"
     case lobbyJoin = "/lobby/@s/join"
-    case restrurantSearch = "/restrurant/search"
+    case restrurantSearch = "/@s/restrurant_search"
 }
 
 extension Endpoint {
