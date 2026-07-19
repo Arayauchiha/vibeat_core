@@ -48,6 +48,7 @@ class LobbyViewModel: ObservableObject {
     @Published var recommendations: VibeatResponse?
     @Published var errorMessage: String? = nil
     @Published var isTicketSubmitted: Bool = false
+    @Published var isQuizStarted: Bool = false
     
     // Global Lobby Settings
     @Published var lobbyTitle: String = ""
@@ -133,5 +134,23 @@ class LobbyViewModel: ObservableObject {
         self.predefinedLng = nil
         self.searchCompleter.searchQuery = ""
         self.isTicketSubmitted = false
+        self.isQuizStarted = false
+    }
+
+    func togglePlayerReady(name: String) {
+        if let idx = activePlayers.firstIndex(where: { $0.name == name }) {
+            var updated = activePlayers[idx]
+            updated.isReady.toggle()
+            activePlayers[idx] = updated
+        }
+    }
+    
+    func clearLobby() async {
+        resetLobbyState()
+    }
+    
+    func calculateRecommendations() async {
+        // Transition to podium/results or simulate recommendations
+        self.path.append(.results)
     }
 }

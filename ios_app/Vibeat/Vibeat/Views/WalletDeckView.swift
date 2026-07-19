@@ -1,15 +1,13 @@
 import SwiftUI
 import Combine
+import MapKit
+import CoreLocation
 
 struct WalletDeckView: View {
     @ObservedObject var viewModel: LobbyViewModel
     
-    // Form Inputs
+    // State to persist guest player name across quiz and staging orbit view
     @State private var playerName = ""
-    @State private var budget: Double = 1200
-    @State private var selectedCuisines: [String] = []
-    @State private var selectedAtmosphere: String = "cozy"
-    @State private var wantsAlcohol = false
     
     // Wallet / Credit Card deck gesture state
     @State private var availableCards = ["HDFC", "SBI", "AXIS", "ICICI"]
@@ -20,20 +18,10 @@ struct WalletDeckView: View {
     @State private var showingStartAlert = false
     @State private var copiedCode = false
     
-    let cuisinesList = ["Italian", "Chinese", "Continental", "Asian", "North Indian", "South Indian"]
-    
     var body: some View {
         ZStack {
-            // Tabletop Backdrop
-            if viewModel.isTicketSubmitted {
-                Color.inkPaper
-                    .edgesIgnoringSafeArea(.all)
-            } else {
-                Image("texture_linen_table")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .edgesIgnoringSafeArea(.all)
-            }
+            Color.inkPaper
+                .edgesIgnoringSafeArea(.all)
             
             VStack {
                 // Header (Only show in Mode 1: Ticket Entry)
@@ -227,6 +215,10 @@ struct WalletDeckView: View {
                             .opacity(playerName.isEmpty ? 0.5 : 1.0)
                         }
                     }
+
+                if viewModel.isQuizStarted {
+                    GuestQuizView(viewModel: viewModel, playerName: $playerName)
+
                 } else {
                     // MODE 2: Staging Orbit Lobby
                     VStack(spacing: 0) {
@@ -294,7 +286,7 @@ struct WalletDeckView: View {
                         
                         // Dynamic concentric orbits
                         OrbitLobbyView(players: viewModel.activePlayers) { name in
-                            
+                            viewModel.togglePlayerReady(name: name)
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         }
                         .padding(.vertical, 10)
@@ -307,7 +299,7 @@ struct WalletDeckView: View {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 Task {
-                                    
+
                                 }
                             }) {
                                 Text("START MATCHING 🍽️")
@@ -327,8 +319,8 @@ struct WalletDeckView: View {
                             .alert("Not Everyone is Ready", isPresented: $showingStartAlert) {
                                 Button("Wait", role: .cancel) { }
                                 Button("Start Anyway", role: .destructive) {
-                                    Task {
-                                        
+                                    withAnimation(.spring()) {
+                                        viewModel.isQuizStarted = true
                                     }
                                 }
                             } message: {
@@ -339,6 +331,42 @@ struct WalletDeckView: View {
                 }
             }
         }
+        .navigationBarBackButtonHidden(viewModel.isQuizStarted)
+    }
+}
+
+struct MenuBoardStyleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.carbonInk.opacity(0.12), lineWidth: 1.5)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.terracottaOrange.opacity(0.35), lineWidth: 2)
+                            .padding(6)
+                    )
+                    .overlay(
+                        Image("texture_recycled_paper")
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .blendMode(.multiply)
+                            .opacity(0.10)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    )
+            )
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
+    }
+}
+
+extension View {
+    func menuBoardStyle() -> some View {
+        self.modifier(MenuBoardStyleModifier())
     }
 }
 
