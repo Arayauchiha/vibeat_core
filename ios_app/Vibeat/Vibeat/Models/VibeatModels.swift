@@ -111,13 +111,14 @@ struct Player: Codable, Identifiable, Equatable {
     let wantsAlcohol: Bool
     let atmosphere: String?
     let specificDish: String?
+    let dietPreference: String?
     var isReady: Bool
 
     enum CodingKeys: String, CodingKey {
-        case name, lat, lng, budget, cuisines, cards, wantsAlcohol = "wants_alcohol", atmosphere, specificDish = "specific_dish", isReady = "is_ready"
+        case name, lat, lng, budget, cuisines, cards, wantsAlcohol = "wants_alcohol", atmosphere, specificDish = "specific_dish", dietPreference = "diet_preference", isReady = "is_ready"
     }
 
-    init(name: String, lat: Double, lng: Double, budget: Double, cuisines: [String], cards: [String], wantsAlcohol: Bool, atmosphere: String? = nil, specificDish: String? = nil, isReady: Bool = false) {
+    init(name: String, lat: Double, lng: Double, budget: Double, cuisines: [String], cards: [String], wantsAlcohol: Bool, atmosphere: String? = nil, specificDish: String? = nil, dietPreference: String? = nil, isReady: Bool = false) {
         self.name = name
         self.lat = lat
         self.lng = lng
@@ -127,6 +128,7 @@ struct Player: Codable, Identifiable, Equatable {
         self.wantsAlcohol = wantsAlcohol
         self.atmosphere = atmosphere
         self.specificDish = specificDish
+        self.dietPreference = dietPreference
         self.isReady = isReady
     }
 
@@ -141,6 +143,7 @@ struct Player: Codable, Identifiable, Equatable {
         wantsAlcohol = (try? container.decode(Bool.self, forKey: .wantsAlcohol)) ?? false
         atmosphere = try container.decodeIfPresent(String.self, forKey: .atmosphere)
         specificDish = try container.decodeIfPresent(String.self, forKey: .specificDish)
+        dietPreference = try container.decodeIfPresent(String.self, forKey: .dietPreference)
         isReady = (try? container.decode(Bool.self, forKey: .isReady)) ?? false
     }
 }

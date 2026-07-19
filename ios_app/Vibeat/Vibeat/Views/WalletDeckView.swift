@@ -1,15 +1,13 @@
 import SwiftUI
 import Combine
+import MapKit
+import CoreLocation
 
 struct WalletDeckView: View {
     @ObservedObject var viewModel: LobbyViewModel
     
-    // Form Inputs
+    // State to persist guest player name across quiz and staging orbit view
     @State private var playerName = ""
-    @State private var budget: Double = 1200
-    @State private var selectedCuisines: [String] = []
-    @State private var selectedAtmosphere: String = "cozy"
-    @State private var wantsAlcohol = false
     
     // Wallet / Credit Card deck gesture state
     @State private var availableCards = ["HDFC", "SBI", "AXIS", "ICICI"]
@@ -20,223 +18,14 @@ struct WalletDeckView: View {
     @State private var showingStartAlert = false
     @State private var copiedCode = false
     
-    let cuisinesList = ["Italian", "Chinese", "Continental", "Asian", "North Indian", "South Indian"]
-    
     var body: some View {
         ZStack {
-            // Tabletop Backdrop
-            if viewModel.isTicketSubmitted {
-                Color.inkPaper
-                    .edgesIgnoringSafeArea(.all)
-            } else {
-                Image("texture_linen_table")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .edgesIgnoringSafeArea(.all)
-            }
+            Color.inkPaper
+                .edgesIgnoringSafeArea(.all)
             
             VStack {
-                // Header (Only show in Mode 1: Ticket Entry)
-                if !viewModel.isTicketSubmitted {
-                    HStack {
-                        Button(action: {
-                            Task {
-                                
-                            }
-                        }) {
-                            Text("Reset Table")
-                                .font(.uiLabel(size: 14, weight: .bold))
-                                .foregroundColor(.terracottaOrange)
-                        }
-                        
-                        Spacer()
-                        
-                        Text("Fill Your Plate")
-                            .font(.editorialSubheader(size: 20))
-                            .foregroundColor(.inkPaper)
-                        
-                        Spacer()
-                        
-                        // Share Postmark Button (Circular stamp icon)
-                        Button(action: {
-                            let text = "Join my Vibeat Dining Table! Let's match: https://vibeat-backend-jn0q.onrender.com"
-                            let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-                            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                               let rootVC = windowScene.windows.first?.rootViewController {
-                                rootVC.present(av, animated: true, completion: nil)
-                            }
-                        }) {
-                            Image("stamp_airmail_invite")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 44, height: 44)
-                                .clipShape(Circle())
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                }
-                
-                if !viewModel.isTicketSubmitted {
-                    // MODE 1: Fill out your entrance ticket
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            // Mascot waiting
-                            Image("clochey_waiting")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(height: 120)
-                                .padding(.top, 5)
-                            
-                            // Guest Ticket Form
-                            VStack(spacing: 16) {
-                                Text("DINING VIBE TICKET")
-                                    .font(.uiLabel(size: 13, weight: .bold))
-                                    .foregroundColor(.terracottaOrange)
-                                    .tracking(2)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                TextField("Your Name", text: $playerName)
-                                    .font(.uiLabel(size: 16, weight: .semibold))
-                                    .padding()
-                                    .background(Color.tabletop.opacity(0.05))
-                                    .cornerRadius(8)
-                                    .autocorrectionDisabled()
-                                
-                                // Budget Slider
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text("Max Budget Per Person")
-                                            .font(.uiLabel(size: 14, weight: .bold))
-                                            .foregroundColor(.carbonInk)
-                                        Spacer()
-                                        Text("₹\(Int(budget))")
-                                            .font(.uiNumber())
-                                            .foregroundColor(.terracottaOrange)
-                                    }
-                                    Slider(value: $budget, in: 300...3000, step: 50)
-                                        .tint(.terracottaOrange)
-                                }
-                                
-                                // Cuisines Chips Selection
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Select Preferred Cuisines")
-                                        .font(.uiLabel(size: 14, weight: .bold))
-                                        .foregroundColor(.carbonInk)
-                                    
-                                    // Cuisine Bubble Layout
-                                    FlowLayout(items: cuisinesList) { cuisine in
-                                        let isSelected = selectedCuisines.contains(cuisine)
-                                        Button(action: {
-                                            if isSelected {
-                                                selectedCuisines.removeAll { $0 == cuisine }
-                                            } else {
-                                                if selectedCuisines.count < 3 {
-                                                    selectedCuisines.append(cuisine)
-                                                }
-                                            }
-                                        }) {
-                                            Text(cuisine)
-                                                .font(.uiLabel(size: 12, weight: .bold))
-                                                .foregroundColor(isSelected ? .inkPaper : .carbonInk)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
-                                                .background(isSelected ? Color.terracottaOrange : Color.carbonInk.opacity(0.08))
-                                                .cornerRadius(20)
-                                        }
-                                    }
-                                }
-                                
-                                // Card Selector & Throwing Gesture
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Swipe Up Card to Add Benefits")
-                                        .font(.uiLabel(size: 14, weight: .bold))
-                                        .foregroundColor(.carbonInk)
-                                    
-                                    ZStack {
-                                        // Leather Wallet Card Sleeve Background
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color.tabletop.opacity(0.12))
-                                            .frame(height: 110)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 12)
-                                                    .stroke(Color.carbonInk.opacity(0.15), lineWidth: 1)
-                                            )
-                                        
-                                        HStack(spacing: -12) {
-                                            ForEach(availableCards, id: \.self) { card in
-                                                CardMiniView(bank: card)
-                                                    .offset(cardOffsets[card] ?? .zero)
-                                                    .gesture(
-                                                        DragGesture()
-                                                            .onChanged { gesture in
-                                                                cardOffsets[card] = CGSize(width: 0, height: min(0, gesture.translation.height))
-                                                            }
-                                                            .onEnded { gesture in
-                                                                if gesture.translation.height < -70 {
-                                                                    // Thrown! Animates off the top
-                                                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                                                    withAnimation(.spring()) {
-                                                                        cardOffsets[card] = CGSize(width: 0, height: -350)
-                                                                        selectedCards.append(card)
-                                                                        availableCards.removeAll { $0 == card }
-                                                                    }
-                                                                } else {
-                                                                    // Snaps back
-                                                                    withAnimation(.spring()) {
-                                                                        cardOffsets[card] = .zero
-                                                                    }
-                                                                }
-                                                            }
-                                                    )
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                Toggle("Wants Alcohol", isOn: $wantsAlcohol)
-                                    .font(.uiLabel(size: 14, weight: .bold))
-                                    .foregroundColor(.carbonInk)
-                                    .tint(.terracottaOrange)
-                            }
-                            .padding(20)
-                            .ticketStubStyle()
-                            .padding(.horizontal, 20)
-                            
-                            // Toss Ticket Action Button
-                            Button(action: {
-                                guard !playerName.isEmpty else { return }
-                                let player = Player(
-                                    name: playerName,
-                                    lat: 28.6139, // Simulated coordinate
-                                    lng: 77.2090,
-                                    budget: budget,
-                                    cuisines: selectedCuisines,
-                                    cards: selectedCards,
-                                    wantsAlcohol: wantsAlcohol,
-                                    atmosphere: selectedAtmosphere,
-                                    specificDish: nil
-                                )
-                                Task {
-                                    withAnimation(.spring()) {
-                                        viewModel.isTicketSubmitted = true
-                                    }
-                                }
-                            }) {
-                                Text("Toss Ticket to Table 🍽️")
-                                    .font(.uiLabel(size: 16, weight: .bold))
-                                    .foregroundColor(.carbonInk)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
-                                    .background(Color.inkPaper)
-                                    .cornerRadius(12)
-                                    .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 3)
-                            }
-                            .padding(.horizontal, 20)
-                            .disabled(playerName.isEmpty)
-                            .opacity(playerName.isEmpty ? 0.5 : 1.0)
-                        }
-                    }
+                if viewModel.isQuizStarted {
+                    GuestQuizView(viewModel: viewModel, playerName: $playerName)
                 } else {
                     // MODE 2: Staging Orbit Lobby
                     VStack(spacing: 0) {
@@ -304,7 +93,7 @@ struct WalletDeckView: View {
                         
                         // Dynamic concentric orbits
                         OrbitLobbyView(players: viewModel.activePlayers) { name in
-                            
+                            viewModel.togglePlayerReady(name: name)
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         }
                         .padding(.vertical, 10)
@@ -318,8 +107,8 @@ struct WalletDeckView: View {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 let allReady = viewModel.activePlayers.allSatisfy { $0.isReady }
                                 if allReady {
-                                    Task {
-                                        
+                                    withAnimation(.spring()) {
+                                        viewModel.isQuizStarted = true
                                     }
                                 } else {
                                     showingStartAlert = true
@@ -342,8 +131,8 @@ struct WalletDeckView: View {
                             .alert("Not Everyone is Ready", isPresented: $showingStartAlert) {
                                 Button("Wait", role: .cancel) { }
                                 Button("Start Anyway", role: .destructive) {
-                                    Task {
-                                        
+                                    withAnimation(.spring()) {
+                                        viewModel.isQuizStarted = true
                                     }
                                 }
                             } message: {
@@ -353,7 +142,7 @@ struct WalletDeckView: View {
                             // Guest ready toggle
                             let myReadyState = viewModel.activePlayers.first(where: { $0.name == playerName })?.isReady ?? false
                             Button(action: {
-                                
+                                viewModel.togglePlayerReady(name: playerName)
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             }) {
                                 Text(myReadyState ? "READY TO START ✓" : "MARK READY TO DECIDE 🍽️")
@@ -375,6 +164,42 @@ struct WalletDeckView: View {
                 }
             }
         }
+        .navigationBarBackButtonHidden(viewModel.isQuizStarted)
+    }
+}
+
+struct MenuBoardStyleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.carbonInk.opacity(0.12), lineWidth: 1.5)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.terracottaOrange.opacity(0.35), lineWidth: 2)
+                            .padding(6)
+                    )
+                    .overlay(
+                        Image("texture_recycled_paper")
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .blendMode(.multiply)
+                            .opacity(0.10)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    )
+            )
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
+    }
+}
+
+extension View {
+    func menuBoardStyle() -> some View {
+        self.modifier(MenuBoardStyleModifier())
     }
 }
 

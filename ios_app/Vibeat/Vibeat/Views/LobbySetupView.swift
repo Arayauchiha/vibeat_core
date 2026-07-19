@@ -611,7 +611,7 @@ struct LobbySetupView: View {
                                                 isReady: true
                                             )
                                             viewModel.activePlayers.append(hostPlayer)
-                                            viewModel.isTicketSubmitted = true
+                                            viewModel.isTicketSubmitted = false
                                             withAnimation(.spring()) {
                                                 viewModel.path.append(.lobby)
                                             }
