@@ -175,12 +175,15 @@ struct MenuBoardStyleModifier: ViewModifier {
                             .padding(6)
                     )
                     .overlay(
-                        Image("texture_recycled_paper")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .blendMode(.multiply)
-                            .opacity(0.10)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                        GeometryReader { geo in
+                            Image("texture_recycled_paper")
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: geo.size.width, height: geo.size.height)
+                                .clipped()
+                                .blendMode(.multiply)
+                                .opacity(0.10)
+                        }
                     )
             )
             .cornerRadius(16)

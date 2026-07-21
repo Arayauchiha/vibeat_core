@@ -14,6 +14,7 @@ enum Endpoint: String, Sendable {
     case lobbyUsers = "/lobby/@s/users"
     case lobbyJoin = "/lobby/@s/join"
     case restrurantSearch = "/@s/restrurant_search"
+    case dummyRestrurantSearch = "/dummy_restrurant_search"
 }
 
 extension Endpoint {

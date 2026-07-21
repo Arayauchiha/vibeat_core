@@ -106,11 +106,15 @@ struct TicketStubModifier: ViewModifier {
                     .fill(Color.inkPaper)
                     .overlay(
                         // Distressed paper texture overlay
-                        Image("texture_recycled_paper")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .blendMode(.multiply)
-                            .opacity(0.12)
+                        GeometryReader { geo in
+                            Image("texture_recycled_paper")
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: geo.size.width, height: geo.size.height)
+                                .clipped()
+                                .blendMode(.multiply)
+                                .opacity(0.12)
+                        }
                     )
             )
             // Clip content to the perfect shape bounds so nothing cuts out of the curved edges

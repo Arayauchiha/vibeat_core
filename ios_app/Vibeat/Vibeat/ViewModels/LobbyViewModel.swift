@@ -44,8 +44,27 @@ class LobbyViewModel: ObservableObject {
     
     // UI State
     @Published var path: [AppScreen] = []
-    @Published var activePlayers: [User] = []
+    @Published var activePlayers: [User] = LobbyViewModel.defaultDummyPlayers
     @Published var recommendations: VenueRecommendationResponse?
+
+    static let defaultDummyPlayers: [User] = [
+        User(
+            id: "dummy_friend_id",
+            fullName: "Rahul (Friend)",
+            contactNumber: "+9876543210",
+            userPreference: UserPreference(
+                budget: 450,
+                preferedDish: "Sushi",
+                cuisine: .korean,
+                vibe: "Lively",
+                foodPreference: .nonVeg,
+                alcoholPreference: false,
+                cards: ["ICICI"],
+                latitute: 28.6145,
+                longitude: 77.2085
+            )
+        )
+    ]
     @Published var errorMessage: String? = nil
     @Published var isTicketSubmitted: Bool = false
     @Published var isQuizStarted: Bool = false
@@ -93,8 +112,13 @@ class LobbyViewModel: ObservableObject {
     }
     
     func fetchPlayersForLobby() async {
-        if !lobbyCode.isEmpty, let users = try? await VibeatAPIClient.shared.getLobbyUsers(lobbyCode: lobbyCode) {
+        if !lobbyCode.isEmpty, var users = try? await VibeatAPIClient.shared.getLobbyUsers(lobbyCode: lobbyCode) {
             await MainActor.run {
+                if !users.contains(where: { $0.id == "dummy_friend_id" }) {
+                    if let dummyFriend = self.activePlayers.first(where: { $0.id == "dummy_friend_id" }) {
+                        users.append(dummyFriend)
+                    }
+                }
                 self.activePlayers = users
             }
         }
@@ -121,7 +145,7 @@ class LobbyViewModel: ObservableObject {
     }
 
     func resetLobbyState() {
-        self.activePlayers = []
+        self.activePlayers = LobbyViewModel.defaultDummyPlayers
         self.recommendations = nil
         self.errorMessage = nil
         
@@ -144,6 +168,7 @@ class LobbyViewModel: ObservableObject {
     
     func calculateRecommendations() async {
         // Populate mock recommendations for visual design and testing
+        self.recommendations = MockData.venueRecommendation
         
         // Transition to podium/results screen
         self.path.append(.results)

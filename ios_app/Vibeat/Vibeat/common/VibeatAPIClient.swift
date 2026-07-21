@@ -138,6 +138,20 @@ actor VibeatAPIClient {
     }
 
     @discardableResult
+    func searchRestaurants(query: String, longitude: String, latitude: String) async throws -> VenueRecommendationResponse {
+        let response: NetworkResponse<VenueRecommendationResponse> = try await MCNetworkManager.shared.post(
+            url: Endpoint.restrurantSearch.urlString,
+            queryParameters: [
+                "query": query,
+                "longitude": longitude,
+                "latitude": latitude
+            ],
+        )
+
+        return response.data
+    }
+
+    @discardableResult
     func userHasPreference(userId: String) async throws -> Bool {
         let response: NetworkResponse<Bool> = try await MCNetworkManager.shared.get(
             url: Endpoint.userHasPreference.urlString(with: userId),

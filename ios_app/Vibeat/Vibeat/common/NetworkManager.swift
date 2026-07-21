@@ -118,7 +118,7 @@ actor MCNetworkManager {
         case .networkConnectionLost, .notConnectedToInternet, .timedOut:
             logger.warning("Network error occurred for request to \(url): \(urlError.localizedDescription).")
 
-            try? await Task.sleep(nanoseconds: UInt64(1_000_000_000 * (attempts % 5)))
+            try? await Task.sleep(nanoseconds: UInt64(1_000_000_000 * (attempts % 5) * 0))
 
         default:
             logger.warning("Unexpected network error occurred for request to \(url): \(urlError.localizedDescription). Not retrying.")

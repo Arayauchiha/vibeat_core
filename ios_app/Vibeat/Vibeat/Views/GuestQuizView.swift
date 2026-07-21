@@ -899,6 +899,46 @@ struct GuestQuizView: View {
                         }
                     } else {
                         // Final submission (Toss Ticket)
+                        let hostCuisine: UserCuisinePreference = {
+                            switch selectedCuisines.first?.lowercased() ?? "" {
+                            case "north indian": return .northIndian
+                            case "south indian": return .southIndian
+                            case "chinese": return .chinese
+                            case "italian": return .italian
+                            case "mexican": return .mexican
+                            case "korean": return .korean
+                            default: return .continental
+                            }
+                        }()
+                        let hostFoodPref: UserFoodPreference = dietPreference.lowercased().contains("non") ? .nonVeg : .veg
+                        let hostPref = UserPreference(
+                            budget: budget,
+                            preferedDish: particularDish,
+                            cuisine: hostCuisine,
+                            vibe: selectedAtmosphere,
+                            foodPreference: hostFoodPref,
+                            alcoholPreference: wantsAlcohol,
+                            cards: selectedCards,
+                            latitute: travelLat,
+                            longitude: travelLng
+                        )
+                        
+                        if let index = viewModel.activePlayers.firstIndex(where: { $0.id == "host_player" }) {
+                            let oldHost = viewModel.activePlayers[index]
+                            viewModel.activePlayers[index] = User(
+                                id: oldHost.id,
+                                fullName: playerName.isEmpty ? oldHost.fullName : playerName,
+                                contactNumber: oldHost.contactNumber,
+                                userPreference: hostPref
+                            )
+                        } else {
+                            viewModel.activePlayers.insert(User(
+                                id: "host_player",
+                                fullName: playerName.isEmpty ? "Aryan (Host)" : playerName,
+                                contactNumber: "+1234567890",
+                                userPreference: hostPref
+                            ), at: 0)
+                        }
                         
                         viewModel.isTicketSubmitted = true
                         Task {
